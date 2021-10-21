@@ -37,7 +37,8 @@ public class CPU {
     protected static boolean ff_R = false;
 
     // Interrupt Enable FF
-    protected static boolean ff_IEN = false;
+    // 교수님 피드백대로 IEN = 1로 시작
+    protected static boolean ff_IEN = true;
 
     // Flag Input/Output FF
     protected static boolean ff_FGI = false;

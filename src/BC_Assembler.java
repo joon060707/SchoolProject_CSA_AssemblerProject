@@ -7,7 +7,7 @@ public class BC_Assembler extends CPU {
     /*
     * 코드 입력 팀
     * 1) Assembly.txt 파일을 읽어오기
-    * 2) 읽어온 어셈블리어를 16진수로 변환
+    * 2) 읽어온 어셈블리어를 16진수로 변환 (First Pass, Second Pass)
     * 3) memory[4096]에 16진수 형태로 저장
     * 4) memory[4096] 콘솔 출력
     *
