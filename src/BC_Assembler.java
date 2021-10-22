@@ -117,7 +117,7 @@ public class BC_Assembler extends CPU {
 
         System.out.println("---저장된 기계어입니다---");
         for(int i=org; i<instructionSize; i++){
-            System.out.printf("M[%04x] = %04x\n", i, memory[i]);
+            System.out.printf("M[%03X] = %04X\n", i, memory[i]);
         }
         System.out.println("---기계어의 끝입니다---");
     }
