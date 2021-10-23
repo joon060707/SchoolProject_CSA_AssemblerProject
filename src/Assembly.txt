@@ -1,4 +1,4 @@
-ORG 0
+ORG 100
 LDA A
 ADD B
 STA C
