@@ -9,11 +9,11 @@ public class BC_Assembler extends CPU {
 
     /*
     * 코드 입력(어셈블러) 팀
-    * 1) Assembly.txt 파일을 읽어오기
-    * 2) 읽어온 어셈블리어를 16진수로 변환 (First Pass, Second Pass)
-    * 3) memory[4096]에 16진수 형태로 저장
-    * 4) memory[4096] 콘솔 출력
     *
+    * + 주소 기호 테이블
+    * + 코드에 주석 추가
+    * + 어셈블리 코드 주석 제거
+    * + 첫 줄 이외의 ORG 처리
     *
     * */
 
@@ -124,7 +124,7 @@ public class BC_Assembler extends CPU {
             // 3-3. memory 상태 출력
             System.out.println("---저장된 기계어입니다---");
             for(int i=org; i<lc; i++){
-                System.out.printf("M[%04x] = %04x\n", i, memory[i]);
+                System.out.printf("M[%03X] = %04X\n", i, memory[i]);
             }
             System.out.println("---기계어의 끝입니다---");
 
@@ -136,46 +136,6 @@ public class BC_Assembler extends CPU {
         }
     }
 
-    static void tempMemory(){
-//        memory[0] = 0x2004;
-//        memory[1] = (short) 0x1005;
-//        memory[2] = 0x3006;
-//        memory[3] = 0x7001;
-//        memory[4] = (short) 0x0053;
-//        memory[5] = (short) 0xFFE9;
-//        memory[6] = 0x0000;
-
-//        memory[0] = 0x5007;
-//        memory[1] = (short) 0x1005;
-//        memory[2] = (short)0x3006;
-//        memory[3] = 0x7001;
-//        memory[4] = (short) 0x0053;
-//        memory[5] = (short) 0xFFE9;
-//        memory[6] = 0x0000;
-//        memory[7] = 0x1005;
-//        memory[8] = (short)0xC007;
-
-//        memory[0] = 0x2006;
-//        memory[1] = 0x7080;
-//        memory[2] = 0x7080;
-//        memory[3] = 0x7080;
-//        memory[4] = 0x7080;
-//        memory[5] = 0x7001;
-//        memory[6] = 0x1003;
-    }
-
-    static void printInstruction(){
-        int instructionSize = 7;        // 이 개수는 Second Pass에서 LC나 다른 변수에서 갖고 와야 함
-        int org = 0;                    // 이 개수는 어셈블러에서 첫 번째 org 옆 숫자 값이어야 함
-
-        System.out.println("---저장된 기계어입니다---");
-        for(int i=org; i<instructionSize; i++){
-            System.out.printf("M[%03X] = %04X\n", i, memory[i]);
-        }
-        System.out.println("---기계어의 끝입니다---");
-    }
-
-
 
     //////////////////////////////////////////////////////////////////////////////////////
 
@@ -184,10 +144,8 @@ public class BC_Assembler extends CPU {
 
     /*
      * Fetch & Decode 팀
-     * 1) memory[4096]에서 16진수 명령어 하나씩 읽어오기
-     * 2) 시간 순서마다 PC, AR, IR 등에 적절한 값 입력하기
-     * 3) 간접 주소 방식인 경우 실제 주소가 입력되기까지 수행하기
-     * 참고: MRI는 T4부터, RRI, IOI는 T3에 실행됨에 유의
+     *
+     * 실행 과정에서 오류 판단
      *
      *
      * */
@@ -274,9 +232,8 @@ public class BC_Assembler extends CPU {
 
     /*
      * Instruction Set 팀
-     * 1) 25개의 명령어 코드 작성
-     * 2) 마이크로 연산을 한 줄로 생각하고 입력
-     * 3) 함수에 인자는 없어도 됨(실제 레지스터를 참조)
+     *
+     * + 실행 과정에서 문제 없는지 판단
      *
      *
      * */
@@ -462,15 +419,13 @@ public class BC_Assembler extends CPU {
 
     /*
      * Execution 팀
-     * 1) Fetch & Decode 팀의 출력값에 따라 적절한 명령어 실행하도록 코딩
-     * 2) 실행 처음에 현재 메모리와 레지스터에 저장된 값 표시, 실행 끝나고 변화된 값 표시
      *
+     * + 실행시 참조된 메모리들도 출력되도록 수정
      *
      * */
     static void execute(){
 
 
-//        System.out.println("해석 결과: "+(ff_I?"(간접) ":"")+decodedInstruction+"");
         switch (decodedInstruction){
             case "AND": AND(); break;
             case "ADD": ADD(); break;
@@ -532,29 +487,8 @@ public class BC_Assembler extends CPU {
              decode();
              execute();
         }
-        System.out.println(memory[6]);
         System.out.println("--- 명령어 실행 끝 ---");
         System.out.println("--- 컴퓨터를 종료합니다. ---");
-
-
-
-//        short a = (short)0xffff;
-//        short b = (short)0x8fef;
-//        int c = a + b;
-//        int d = (short) c;
-//        int e = (c << 15);
-//        int f = (c << 15) >>> 31;
-//        System.out.println(Integer.toBinaryString(a));
-//        System.out.println(Integer.toBinaryString(b));
-//        System.out.println(Integer.toBinaryString(c));
-//        System.out.println(Integer.toBinaryString(d));
-//        System.out.println(Integer.toBinaryString(e));
-//        System.out.println(Integer.toBinaryString(f));
-//
-//        int g = 0b1111111100000000;
-//        int h = g >>> 12;
-//        System.out.println(Integer.toBinaryString(h));
-//        System.out.println(h);
 
 
     }
