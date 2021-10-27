@@ -1,5 +1,6 @@
 import java.io.BufferedReader;
 import java.io.FileReader;
+import java.util.Arrays;
 
 public class BC_Assembler extends CPU {
 
@@ -18,15 +19,20 @@ public class BC_Assembler extends CPU {
     * */
 
     private static void runAssembler(String file) {
-        int cnt=0;
-        int org;
-        int lc;
-        String[] temp1 = new String[4096];
-        String[][] temp2 = new String[4096][4];
-        // 라벨필드 | 명령어 | 주소 | I
+        int org=0;
+        int lc=0;
+        // 라벨 명령어 주소 I 코멘트
+        String[] temp1 = new String[5000];
+        // 라벨 | 명령어 | 주소 | I | 코멘트
+        String[][] temp2 = new String[5000][5];
+        // 기호 | 주소
+        String[][] symbolAddress = new String[10][2];
 
+
+
+        // 1. 버퍼리더에 파일 등록, 파일을 temp1에 저장
+        int cnt=0;
         try {
-            // 1-1. 버퍼리더에 파일 등록, 파일을 temp1에 저장, 달성 후 cnt = 명령어+1
             BufferedReader br = new BufferedReader(new FileReader(file));
             while(true) {
                 String line = br.readLine();
@@ -34,106 +40,142 @@ public class BC_Assembler extends CPU {
                 temp1[cnt++] = line;
             }
             br.close();
+        } catch (Exception e) {}
 
 
-            // 2-1. temp1을 4열짜리 temp2로 이전
-            for(int i=0;i<temp1.length;i++) {
-                if(temp1[i] != null) {
-                    String[] temp3 = temp1[i].split(" ");
-                    for(int j=0;j<temp3.length;j++) {
-                        temp2[i][j]=temp3[j];
-                    }
-                }
-            }
-            // 2-2. 라벨 주소 배열 라인 맞춰주기
-            for(int i=0;i<temp2.length;i++) {
-                if(temp1[i] != null) {
-                    if(!(temp2[i][0].contains(","))) {
-                        temp2[i][3]=temp2[i][2];
-                        temp2[i][2]=temp2[i][1];
-                        temp2[i][1]=temp2[i][0];
-                        temp2[i][0]=null;
-                    }
-                }
-            }
-            // 2-3. 라벨 주소 실제 주소 대입하기
-            for(int i=0;i<temp2.length;i++) {
-                for(int j=0;j<temp2.length;j++) {
-                    if(temp2[i][0]!=null && temp2[j][2]!=null) {
-                        if(temp2[i][0].contains(temp2[j][2]))
-                            temp2[j][2]=Integer.toString(i+Integer.parseInt(temp2[0][2])-1);
-                    }
-                }
-            }
-            // 2-4. 명령어 숫자로 변환하기
-            for(int i=0;i<temp2.length;i++) {
-                if(temp2[i][1]!=null) {
-                    if(temp2[i][1].equals("AND")) temp2[i][1]="0";
-                    if(temp2[i][1].equals("ADD")) temp2[i][1]="4096";
-                    if(temp2[i][1].equals("LDA")) temp2[i][1]="8192";
-                    if(temp2[i][1].equals("STA")) temp2[i][1]="12288";
-                    if(temp2[i][1].equals("BUN")) temp2[i][1]="16384";
-                    if(temp2[i][1].equals("BSA")) temp2[i][1]="20480";
-                    if(temp2[i][1].equals("ISZ")) temp2[i][1]="24576";
-                    if(temp2[i][1].equals("CLA")) temp2[i][1]="30720";
-                    if(temp2[i][1].equals("CLE")) temp2[i][1]="29696";
-                    if(temp2[i][1].equals("CMA")) temp2[i][1]="29184";
-                    if(temp2[i][1].equals("CME")) temp2[i][1]="28928";
-                    if(temp2[i][1].equals("CIR")) temp2[i][1]="28800";
-                    if(temp2[i][1].equals("CIL")) temp2[i][1]="28736";
-                    if(temp2[i][1].equals("INC")) temp2[i][1]="28704";
-                    if(temp2[i][1].equals("SPA")) temp2[i][1]="28688";
-                    if(temp2[i][1].equals("SNA")) temp2[i][1]="28680";
-                    if(temp2[i][1].equals("SZA")) temp2[i][1]="28676";
-                    if(temp2[i][1].equals("SZE")) temp2[i][1]="28674";
-                    if(temp2[i][1].equals("HLT")) temp2[i][1]="28673";
-                    if(temp2[i][1].equals("INP")) temp2[i][1]="63488";
-                    if(temp2[i][1].equals("OUT")) temp2[i][1]="62464";
-                    if(temp2[i][1].equals("SKI")) temp2[i][1]="61952";
-                    if(temp2[i][1].equals("SKO")) temp2[i][1]="61696";
-                    if(temp2[i][1].equals("ION")) temp2[i][1]="61568";
-                    if(temp2[i][1].equals("IOF")) temp2[i][1]="61504";
-                    // 슈도 명령어
-                    if(temp2[i][1].equals("DEC")) temp2[i][1]="0";
-                    if(temp2[i][1].equals("HEX")) temp2[i][1]="0";
-                }
-            }
-            // 2-5. 주소 null 0으로 변환
-            for(int i=0;i<temp2.length;i++) {
-                if(temp2[i][2]==null) {
-                    temp2[i][2]="0";
-                }
-            }
-            // 2-6. I 변환
-            for(int i=0;i<temp2.length;i++) {
-                if(temp2[i][3]==null) {
-                    temp2[i][3]="0";
-                } else if(temp2[i][3].equals("I"))
-                    temp2[i][3]="28672";
-            }
 
-
-            // 3-1. ORG 값대로 location counter 초기화
-            org=Integer.parseInt(temp2[0][2]);
-            lc=org;
-            // 3-2. temp2의 값 memory로 이전
-            for(int i = 0 ; !(temp2[i+1][1].equals("END")) ;i++) {
-                memory[i+org] = (short)(Integer.parseInt(temp2[i+1][1]) + Integer.parseInt(temp2[i+1][2]) + Integer.parseInt(temp2[i+1][3]));
-                lc++;
+        // 2-1. temp1에서 라벨 필드 구분하여 temp2로 이전
+        for(int i=0;i<temp1.length;i++) {
+            if(temp1[i] != null) {
+                String[] temp = temp1[i].split(",");
+                if(temp.length==2) {
+                    temp2[i][0] = temp[0];
+                    temp1[i] = temp[1];
+                } else
+                    temp1[i] = temp[0];
             }
-            // 3-3. memory 상태 출력
-            System.out.println("---저장된 기계어입니다---");
-            for(int i=org; i<lc; i++){
-                System.out.printf("M[%03X] = %04X\n", i, memory[i]);
-            }
-            System.out.println("---기계어의 끝입니다---");
-
-            reg_PC = (short) org;
-
-
-        } catch (Exception e) {
-            System.out.println(e.getMessage());
         }
+        // 2-2. temp1에서 코멘트 필드 구분하여 temp2로 이전
+        for(int i=0;i<temp1.length;i++) {
+            if(temp1[i] != null) {
+                String[] temp = temp1[i].split("/");
+                if(temp.length==2) {
+                    temp2[i][4] = temp[1];
+                    temp1[i] = temp[0];
+                } else
+                    temp1[i] = temp[0];
+            }
+        }
+        // 2-3. temp1에서 명령어 필드 구분하여 temp2로 이전
+        for(int i=0;i<temp1.length;i++) {
+            if(temp1[i] != null) {
+                String[] temp = temp1[i].split(" ");
+                for(int j = 0; j<temp.length; j++) {
+                    temp2[i][j+1]=temp[j];
+                }
+            }
+        }
+        // 예) temp2 출력
+        System.out.println("<  temp2 상태  >");
+        for(int i=0;i<cnt;i++) {
+            for(int j=0;j<5;j++) {
+                System.out.print("|"+temp2[i][j]+"\t");
+            } System.out.println();
+        } System.out.println();
+
+
+
+        // 3. First Pass(기호 주소 테이블 등록)
+        int sac=0; // 기호 주소 카운트
+        for(int i=0;i<temp2.length;i++) {
+            if(temp2[i][0] != null) {
+                symbolAddress[sac][0]=temp2[i][0];
+                symbolAddress[sac][1]=Integer.toString(lc);
+                sac++;
+            } else if(temp2[i][1].equals("ORG")) { // ORG 만날 경우 lc 초기화
+                org = Integer.valueOf(temp2[i][2],16);
+                lc = org;
+                continue;
+            } else if(temp2[i][1].equals("END")) // END 만난 경우 종료
+                break;
+            lc++;
+        }
+        // 예) 기호주소표 출력
+        System.out.println("<  기호주소표 상태  >");
+        for(int i=0;i<sac;i++) {
+            System.out.print("|");
+            for(int j=0;j<2;j++) {
+                System.out.print(symbolAddress[i][j]+"\t|");
+            } System.out.println();
+        } System.out.println();
+
+
+
+        // 4. Second Pass(어셈블리어-기계어 번역)
+        lc=0;
+        for(int i=0;i<temp2.length;i++) {
+            if(temp2[i][1].equals("ORG")) { // 4-1. ORG인 경우
+                org = Integer.valueOf(temp2[i][2],16);
+                lc = org;
+                continue;
+            } else if(temp2[i][1].equals("END")) { // 4-2. END인 경우
+                break;
+            } else if(temp2[i][1].equals("DEC") || temp2[i][1].equals("HEX")) { // 4-3. DEC/HEX인 경우
+                if(temp2[i][1].equals("DEC")) ;
+                if(temp2[i][1].equals("HEX")) temp2[i][2] = Integer.toString(Integer.valueOf(temp2[i][2], 16));
+                memory[lc]=(short)Integer.parseInt(temp2[i][2]);
+            } else if(temp2[i][1].equals("AND") || temp2[i][1].equals("ADD") || temp2[i][1].equals("LDA") ||
+                    temp2[i][1].equals("STA") || temp2[i][1].equals("BUN") || temp2[i][1].equals("BSA") || temp2[i][1].equals("ISZ")) {  // 4-4. MRI인 경우
+                if(temp2[i][1].equals("AND")) temp2[i][1]="0000";
+                if(temp2[i][1].equals("ADD")) temp2[i][1]="1000";
+                if(temp2[i][1].equals("LDA")) temp2[i][1]="2000";
+                if(temp2[i][1].equals("STA")) temp2[i][1]="3000";
+                if(temp2[i][1].equals("BUN")) temp2[i][1]="4000";
+                if(temp2[i][1].equals("BSA")) temp2[i][1]="5000";
+                if(temp2[i][1].equals("ISZ")) temp2[i][1]="6000";
+                for(int j=0;j<symbolAddress.length;j++)
+                    if(temp2[i][2].equals(symbolAddress[j][0])) temp2[i][2] = symbolAddress[j][1];
+                if(temp2[i][3]==null) temp2[i][3]="0";
+                else if(temp2[i][3].equals("I")) temp2[i][3]="7000";
+                memory[lc]=(short)((int)Integer.valueOf(temp2[i][1], 16)+Integer.parseInt(temp2[i][2])+(int)Integer.valueOf(temp2[i][3], 16));
+            } else if(temp2[i][1].equals("CLA") || temp2[i][1].equals("CLE") || temp2[i][1].equals("CMA") || temp2[i][1].equals("CME") ||
+                    temp2[i][1].equals("CIR") || temp2[i][1].equals("CIL") || temp2[i][1].equals("INC") || temp2[i][1].equals("SPA") ||
+                    temp2[i][1].equals("SNA") || temp2[i][1].equals("SZA") || temp2[i][1].equals("SZE") || temp2[i][1].equals("HLT") ||
+                    temp2[i][1].equals("INP") || temp2[i][1].equals("OUT") || temp2[i][1].equals("SKI") || temp2[i][1].equals("SKO") ||
+                    temp2[i][1].equals("ION") || temp2[i][1].equals("IOF")) {  // 4-5. non_MRI인 경우
+                if(temp2[i][1].equals("CLA")) temp2[i][1]="7800";
+                if(temp2[i][1].equals("CLE")) temp2[i][1]="7400";
+                if(temp2[i][1].equals("CMA")) temp2[i][1]="7200";
+                if(temp2[i][1].equals("CME")) temp2[i][1]="7100";
+                if(temp2[i][1].equals("CIR")) temp2[i][1]="7080";
+                if(temp2[i][1].equals("CIL")) temp2[i][1]="7040";
+                if(temp2[i][1].equals("INC")) temp2[i][1]="7020";
+                if(temp2[i][1].equals("SPA")) temp2[i][1]="7010";
+                if(temp2[i][1].equals("SNA")) temp2[i][1]="7008";
+                if(temp2[i][1].equals("SZA")) temp2[i][1]="7004";
+                if(temp2[i][1].equals("SZE")) temp2[i][1]="7002";
+                if(temp2[i][1].equals("HLT")) temp2[i][1]="7001";
+                if(temp2[i][1].equals("INP")) temp2[i][1]="F800";
+                if(temp2[i][1].equals("OUT")) temp2[i][1]="F400";
+                if(temp2[i][1].equals("SKI")) temp2[i][1]="F200";
+                if(temp2[i][1].equals("SKO")) temp2[i][1]="F100";
+                if(temp2[i][1].equals("ION")) temp2[i][1]="F080";
+                if(temp2[i][1].equals("IOF")) temp2[i][1]="F040";
+                memory[lc]=(short)(int)Integer.valueOf(temp2[i][1], 16);
+            } else // 4-6. 코드 오류인 경우
+                System.out.println("잘못된 명령어 입력");
+            lc++;
+        }
+
+
+
+        // 5. memory 상태 출력
+        System.out.println("---저장된 기계어입니다---");
+        for(int i=0; i<400; i++){
+            System.out.printf("M[%03X] = %04X\n", i, memory[i]);
+        }
+        System.out.println("---기계어의 끝입니다---");
+        reg_PC = (short) org;
     }
 
 
@@ -489,6 +531,25 @@ public class BC_Assembler extends CPU {
         }
         System.out.println("--- 명령어 실행 끝 ---");
         System.out.println("--- 컴퓨터를 종료합니다. ---");
+
+
+
+        // 테스트 파트. 무시하세요!
+        String sample = "A,ABC D I /asdf";
+        String sample2 = "A,  ABC D I /asdf";
+        String sample3 = "  ABC D I /asdf";
+
+        String[] sampleA = sample.split(" ");
+        String[] sampleB = sample2.split(" ");
+        String[] sampleC = sample3.split(" ");
+        System.out.println(Arrays.toString(sampleA));
+        System.out.println(Arrays.toString(sampleB));
+        System.out.println(Arrays.toString(sampleC));
+        if(sampleC[0]!=null) System.out.println("ss"+sampleC[0]+"dd");
+
+        System.out.println(sample3.split(",").length);
+
+        System.out.println(Integer.parseInt("7BFAAAAA", 16));
 
 
     }
