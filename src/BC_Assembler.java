@@ -1,6 +1,7 @@
 import java.io.BufferedReader;
 import java.io.FileReader;
-import java.util.Arrays;
+import java.util.ArrayList;
+import java.util.List;
 
 public class BC_Assembler extends CPU {
 
@@ -28,6 +29,17 @@ public class BC_Assembler extends CPU {
         // 기호 | 주소
         String[][] symbolAddress = new String[10][2];
 
+        // MRI 테이블
+        String[][] table_MRI = { { "AND", "0000" }, { "ADD", "1000" }, { "LEA", "2000" },
+                { "STA", "3000" }, { "BUN", "4000" }, { "BSA", "5000" }, { "ISZ", "6000" } };
+        // non MRI 테이블
+        String[][] table_non_MRI = { {"CLA", "7800"}, {"CLE", "7400"}, {"CMA", "7200"},
+                {"CME", "7100"}, {"CIR", "7080"}, {"CIL", "7040"},
+                {"INC", "7020"}, {"SPA", "7010"}, {"SNA", "7008"},
+                {"SZA", "7004"}, {"SZE", "7002"}, {"HLT", "7001"},
+                {"INP", "F800"}, {"OUT", "F400"}, {"SKI", "F200"},
+                {"SKO", "F100"}, {"ION", "F080"}, {"IOF", "F040"} };
+
 
 
         // 1. 버퍼리더에 파일 등록, 파일을 temp1에 저장
@@ -36,11 +48,14 @@ public class BC_Assembler extends CPU {
             BufferedReader br = new BufferedReader(new FileReader(file));
             while(true) {
                 String line = br.readLine();
-                if(line==null) break;
+                if(line==null ) break;          // 파일의 끝
+                if(line.isEmpty()) continue;   // 빈 줄이면 무시하고 다음 줄 읽기
+                if(line.trim().charAt(0)=='/') continue; // 주석으로 시작하면 무시하고 다음 줄 읽기
                 temp1[cnt++] = line;
             }
             br.close();
         } catch (Exception e) {}
+
 
 
 
@@ -49,6 +64,7 @@ public class BC_Assembler extends CPU {
             if(temp1[i] != null) {
                 String[] temp = temp1[i].split(",");
                 if(temp.length==2) {
+                    temp[1] = temp[1].trim(); //temp[1]의 가장 앞부분에 공백이 있으면 제거
                     temp2[i][0] = temp[0];
                     temp1[i] = temp[1];
                 } else
@@ -75,11 +91,24 @@ public class BC_Assembler extends CPU {
                 }
             }
         }
+
+        //명령어 비교할 때 null이 있으면 오류가 발생하므로 문자열 "null"을 넣음
+        for(int i = 0; i < temp1.length; i++) {
+
+            if(temp1[i] != null) {
+                if (temp1[i].equals("")) temp2[i][1] = "null"; //빈 줄 혹은 주석만 있는 경우
+                if(temp1[i].trim().equals("")) temp2[i][1] = "null"; //빈 줄은 아니지만 공백만 있는 경우
+            }
+        }
+
+
+
         // 예) temp2 출력
         System.out.println("<  temp2 상태  >");
         for(int i=0;i<cnt;i++) {
             for(int j=0;j<5;j++) {
-                System.out.print("|"+temp2[i][j]+"\t");
+                if(!temp2[i][1].equals("null")) System.out.print("|"+temp2[i][j]+"\t"); //빈 줄은 temp2의 배열을 출력하지 않고 빈 줄만 출력
+                else if(temp2[i][4] != null) System.out.print("|"+temp2[i][j]+"\t");
             } System.out.println();
         } System.out.println();
 
@@ -113,7 +142,9 @@ public class BC_Assembler extends CPU {
 
         // 4. Second Pass(어셈블리어-기계어 번역)
         lc=0;
+        int line_num = 0;
         for(int i=0;i<temp2.length;i++) {
+            line_num++;
             if(temp2[i][1].equals("ORG")) { // 4-1. ORG인 경우
                 org = Integer.valueOf(temp2[i][2],16);
                 lc = org;
@@ -162,8 +193,12 @@ public class BC_Assembler extends CPU {
                 if(temp2[i][1].equals("ION")) temp2[i][1]="F080";
                 if(temp2[i][1].equals("IOF")) temp2[i][1]="F040";
                 memory[lc]=(short)(int)Integer.valueOf(temp2[i][1], 16);
-            } else // 4-6. 코드 오류인 경우
-                System.out.println("잘못된 명령어 입력");
+            }
+            else if(temp2[i][1].equals("null")) lc--; //빈 줄과 주석으로만 되어 있는 줄은 코드 오류 처리를 안하고, lc에도 영향을 안줌.
+            else {// 4-6. 코드 오류인 경우
+                System.out.printf("잘못된 명령어 입력: %d번째 줄의 입력이 잘못되었습니다.\n", line_num);
+                System.exit(0); //코드를 잘못 입력한 경우 프로그램을 강제 종료
+            }
             lc++;
         }
 
@@ -171,7 +206,7 @@ public class BC_Assembler extends CPU {
 
         // 5. memory 상태 출력
         System.out.println("---저장된 기계어입니다---");
-        for(int i=0; i<400; i++){
+        for(int i=org; i<lc; i++){
             System.out.printf("M[%03X] = %04X\n", i, memory[i]);
         }
         System.out.println("---기계어의 끝입니다---");
@@ -280,6 +315,12 @@ public class BC_Assembler extends CPU {
      *
      * */
 
+
+    // 이 변수들은 출력을 보조하는 변수들이므로 어셈블러나 Basic Computer에는 영향을 주지 않음.
+    static List<short[]> changeMemoryList = new ArrayList<>(); //STA 사용시 변화된 메모리 주소 저장하는 리스트
+    //static int[] changeMemory = new int[3]; // 주소 : 이전 값 : 이후 값
+
+
     //메모리 참조 명령
     static void AND() {
         // T4
@@ -312,6 +353,12 @@ public class BC_Assembler extends CPU {
     }
 
     static void STA(){
+        //메모리 변화 출력
+        short[] changeMemory = new short[3];
+        changeMemory[0] = reg_AR; // 변화할 메모리 주소
+        changeMemory[1] = memory[reg_AR]; //변화할 메모리 이전 값
+        changeMemory[2] = reg_AC; //변화할 메모리 이후 값
+        changeMemoryList.add(changeMemory); //변화된 메모리 주소 저장
         // T4
         memory[reg_AR] = reg_AC;
     }
@@ -501,9 +548,15 @@ public class BC_Assembler extends CPU {
         // 모든 명령이 끝나면 공통으로 SC=0이 됨.
         reg_SC = 0;
         System.out.print("IR\t\tAR\tPC\tDR\t\tAC\t\tTR\t\t");
-        System.out.println("I\tS\tE");
+        System.out.print("I\tS\tE");
+        for(short[] m : changeMemoryList)
+            System.out.printf("\tM[%03X]", m[0]);
+        System.out.println();
         System.out.print(String.format("%04X\t%03X\t%03X\t%04X\t%04X\t%04X\t", reg_IR, reg_AR, reg_PC, reg_DR, reg_AC, reg_TR));
-        System.out.println(String.format("%X\t%X\t%X", ff_I?1:0, ff_S?1:0, ff_E?1:0));
+        System.out.print(String.format("%X\t%X\t%X", ff_I?1:0, ff_S?1:0, ff_E?1:0));
+        for(short[] m : changeMemoryList)
+            System.out.printf("\t%04X", m[2]);
+        System.out.println();
     }
 
 
@@ -530,26 +583,13 @@ public class BC_Assembler extends CPU {
              execute();
         }
         System.out.println("--- 명령어 실행 끝 ---");
+
+        System.out.println("--- 변경된 메모리 ---");
+        for(short[] i : changeMemoryList) {
+            System.out.println(String.format("memory[%03X]: 변경 전 %04X 변경 후 %04X", i[0], i[1], i[2]));
+        }
+
         System.out.println("--- 컴퓨터를 종료합니다. ---");
-
-
-
-        // 테스트 파트. 무시하세요!
-        String sample = "A,ABC D I /asdf";
-        String sample2 = "A,  ABC D I /asdf";
-        String sample3 = "  ABC D I /asdf";
-
-        String[] sampleA = sample.split(" ");
-        String[] sampleB = sample2.split(" ");
-        String[] sampleC = sample3.split(" ");
-        System.out.println(Arrays.toString(sampleA));
-        System.out.println(Arrays.toString(sampleB));
-        System.out.println(Arrays.toString(sampleC));
-        if(sampleC[0]!=null) System.out.println("ss"+sampleC[0]+"dd");
-
-        System.out.println(sample3.split(",").length);
-
-        System.out.println(Integer.parseInt("7BFAAAAA", 16));
 
 
     }
