@@ -30,7 +30,7 @@ public class BC_Assembler extends CPU {
         String[][] symbolAddress = new String[10][2];
 
         // MRI 테이블
-        String[][] table_MRI = { { "AND", "0000" }, { "ADD", "1000" }, { "LEA", "2000" },
+        String[][] table_MRI = { { "AND", "0000" }, { "ADD", "1000" }, { "LDA", "2000" },
                 { "STA", "3000" }, { "BUN", "4000" }, { "BSA", "5000" }, { "ISZ", "6000" } };
         // non MRI 테이블
         String[][] table_non_MRI = { {"CLA", "7800"}, {"CLE", "7400"}, {"CMA", "7200"},
@@ -138,8 +138,6 @@ public class BC_Assembler extends CPU {
             } System.out.println();
         } System.out.println();
 
-
-
         // 4. Second Pass(어셈블리어-기계어 번역)
         lc=0;
         int line_num = 0;
@@ -155,52 +153,108 @@ public class BC_Assembler extends CPU {
                 if(temp2[i][1].equals("DEC")) ;
                 if(temp2[i][1].equals("HEX")) temp2[i][2] = Integer.toString(Integer.valueOf(temp2[i][2], 16));
                 memory[lc]=(short)Integer.parseInt(temp2[i][2]);
-            } else if(temp2[i][1].equals("AND") || temp2[i][1].equals("ADD") || temp2[i][1].equals("LDA") ||
-                    temp2[i][1].equals("STA") || temp2[i][1].equals("BUN") || temp2[i][1].equals("BSA") || temp2[i][1].equals("ISZ")) {  // 4-4. MRI인 경우
-                if(temp2[i][1].equals("AND")) temp2[i][1]="0000";
-                if(temp2[i][1].equals("ADD")) temp2[i][1]="1000";
-                if(temp2[i][1].equals("LDA")) temp2[i][1]="2000";
-                if(temp2[i][1].equals("STA")) temp2[i][1]="3000";
-                if(temp2[i][1].equals("BUN")) temp2[i][1]="4000";
-                if(temp2[i][1].equals("BSA")) temp2[i][1]="5000";
-                if(temp2[i][1].equals("ISZ")) temp2[i][1]="6000";
-                for(int j=0;j<symbolAddress.length;j++)
-                    if(temp2[i][2].equals(symbolAddress[j][0])) temp2[i][2] = symbolAddress[j][1];
-                if(temp2[i][3]==null) temp2[i][3]="0";
-                else if(temp2[i][3].equals("I")) temp2[i][3]="7000";
-                memory[lc]=(short)((int)Integer.valueOf(temp2[i][1], 16)+Integer.parseInt(temp2[i][2])+(int)Integer.valueOf(temp2[i][3], 16));
-            } else if(temp2[i][1].equals("CLA") || temp2[i][1].equals("CLE") || temp2[i][1].equals("CMA") || temp2[i][1].equals("CME") ||
+            } else if ( temp2[i][1].equals("AND") || temp2[i][1].equals("ADD") || temp2[i][1].equals("LDA") ||
+                    temp2[i][1].equals("STA") || temp2[i][1].equals("BUN") || temp2[i][1].equals("BSA") || temp2[i][1].equals("ISZ") ) { // 4-4. MRI인 경우
+                for ( int j = 0; j < 7; j++ ) {
+                    if ( temp2[i][1].equals(table_MRI[j][0]) ) {
+                        temp2[i][1] = table_MRI[j][1];
+                        break;
+                    }
+                }
+                for(int j=0;j<symbolAddress.length;j++) {
+                    if(temp2[i][2].equals(symbolAddress[j][0])) {
+                        temp2[i][2] = symbolAddress[j][1];
+                        break;
+                    }
+                }
+                if(temp2[i][3]==null)
+                    temp2[i][3]="0";
+                else if(temp2[i][3].equals("I"))
+                    temp2[i][3]="7000";
+
+                memory[lc]=(short)(Integer.valueOf(temp2[i][1], 16) +Integer.parseInt(temp2[i][2])+ Integer.valueOf(temp2[i][3], 16));
+
+            } else if ( temp2[i][1].equals("CLA") || temp2[i][1].equals("CLE") || temp2[i][1].equals("CMA") || temp2[i][1].equals("CME") ||
                     temp2[i][1].equals("CIR") || temp2[i][1].equals("CIL") || temp2[i][1].equals("INC") || temp2[i][1].equals("SPA") ||
                     temp2[i][1].equals("SNA") || temp2[i][1].equals("SZA") || temp2[i][1].equals("SZE") || temp2[i][1].equals("HLT") ||
                     temp2[i][1].equals("INP") || temp2[i][1].equals("OUT") || temp2[i][1].equals("SKI") || temp2[i][1].equals("SKO") ||
-                    temp2[i][1].equals("ION") || temp2[i][1].equals("IOF")) {  // 4-5. non_MRI인 경우
-                if(temp2[i][1].equals("CLA")) temp2[i][1]="7800";
-                if(temp2[i][1].equals("CLE")) temp2[i][1]="7400";
-                if(temp2[i][1].equals("CMA")) temp2[i][1]="7200";
-                if(temp2[i][1].equals("CME")) temp2[i][1]="7100";
-                if(temp2[i][1].equals("CIR")) temp2[i][1]="7080";
-                if(temp2[i][1].equals("CIL")) temp2[i][1]="7040";
-                if(temp2[i][1].equals("INC")) temp2[i][1]="7020";
-                if(temp2[i][1].equals("SPA")) temp2[i][1]="7010";
-                if(temp2[i][1].equals("SNA")) temp2[i][1]="7008";
-                if(temp2[i][1].equals("SZA")) temp2[i][1]="7004";
-                if(temp2[i][1].equals("SZE")) temp2[i][1]="7002";
-                if(temp2[i][1].equals("HLT")) temp2[i][1]="7001";
-                if(temp2[i][1].equals("INP")) temp2[i][1]="F800";
-                if(temp2[i][1].equals("OUT")) temp2[i][1]="F400";
-                if(temp2[i][1].equals("SKI")) temp2[i][1]="F200";
-                if(temp2[i][1].equals("SKO")) temp2[i][1]="F100";
-                if(temp2[i][1].equals("ION")) temp2[i][1]="F080";
-                if(temp2[i][1].equals("IOF")) temp2[i][1]="F040";
+                    temp2[i][1].equals("ION") || temp2[i][1].equals("IOF") ) {
+                for ( int j = 0; j < table_non_MRI.length; j++) { // 4-5. non_MRI인 경우
+                    if ( temp2[i][1].equals(table_non_MRI[j][0]) ) {
+                        temp2[i][1] = table_non_MRI[j][1];
+                        break;
+                    }
+                }
                 memory[lc]=(short)(int)Integer.valueOf(temp2[i][1], 16);
-            }
-            else if(temp2[i][1].equals("null")) lc--; //빈 줄과 주석으로만 되어 있는 줄은 코드 오류 처리를 안하고, lc에도 영향을 안줌.
+            } else if(temp2[i][1].equals("null")) lc--; //빈 줄과 주석으로만 되어 있는 줄은 코드 오류 처리를 안하고, lc에도 영향을 안줌.
             else {// 4-6. 코드 오류인 경우
                 System.out.printf("잘못된 명령어 입력: %d번째 줄의 입력이 잘못되었습니다.\n", line_num);
                 System.exit(0); //코드를 잘못 입력한 경우 프로그램을 강제 종료
             }
             lc++;
         }
+
+//        // 4. Second Pass(어셈블리어-기계어 번역)
+//        lc=0;
+//        int line_num = 0;
+//        for(int i=0;i<temp2.length;i++) {
+//            line_num++;
+//            if(temp2[i][1].equals("ORG")) { // 4-1. ORG인 경우
+//                org = Integer.valueOf(temp2[i][2],16);
+//                lc = org;
+//                continue;
+//            } else if(temp2[i][1].equals("END")) { // 4-2. END인 경우
+//                break;
+//            } else if(temp2[i][1].equals("DEC") || temp2[i][1].equals("HEX")) { // 4-3. DEC/HEX인 경우
+//                if(temp2[i][1].equals("DEC")) ;
+//                if(temp2[i][1].equals("HEX")) temp2[i][2] = Integer.toString(Integer.valueOf(temp2[i][2], 16));
+//                memory[lc]=(short)Integer.parseInt(temp2[i][2]);
+//            } else if(temp2[i][1].equals("AND") || temp2[i][1].equals("ADD") || temp2[i][1].equals("LDA") ||
+//                    temp2[i][1].equals("STA") || temp2[i][1].equals("BUN") || temp2[i][1].equals("BSA") || temp2[i][1].equals("ISZ")) {  // 4-4. MRI인 경우
+//                if(temp2[i][1].equals("AND")) temp2[i][1]="0000";
+//                if(temp2[i][1].equals("ADD")) temp2[i][1]="1000";
+//                if(temp2[i][1].equals("LDA")) temp2[i][1]="2000";
+//                if(temp2[i][1].equals("STA")) temp2[i][1]="3000";
+//                if(temp2[i][1].equals("BUN")) temp2[i][1]="4000";
+//                if(temp2[i][1].equals("BSA")) temp2[i][1]="5000";
+//                if(temp2[i][1].equals("ISZ")) temp2[i][1]="6000";
+//                for(int j=0;j<symbolAddress.length;j++)
+//                    if(temp2[i][2].equals(symbolAddress[j][0])) temp2[i][2] = symbolAddress[j][1];
+//                if(temp2[i][3]==null) temp2[i][3]="0";
+//                else if(temp2[i][3].equals("I")) temp2[i][3]="7000";
+//                memory[lc]=(short)((int)Integer.valueOf(temp2[i][1], 16)+Integer.parseInt(temp2[i][2])+(int)Integer.valueOf(temp2[i][3], 16));
+//            } else if(temp2[i][1].equals("CLA") || temp2[i][1].equals("CLE") || temp2[i][1].equals("CMA") || temp2[i][1].equals("CME") ||
+//                    temp2[i][1].equals("CIR") || temp2[i][1].equals("CIL") || temp2[i][1].equals("INC") || temp2[i][1].equals("SPA") ||
+//                    temp2[i][1].equals("SNA") || temp2[i][1].equals("SZA") || temp2[i][1].equals("SZE") || temp2[i][1].equals("HLT") ||
+//                    temp2[i][1].equals("INP") || temp2[i][1].equals("OUT") || temp2[i][1].equals("SKI") || temp2[i][1].equals("SKO") ||
+//                    temp2[i][1].equals("ION") || temp2[i][1].equals("IOF")) {  // 4-5. non_MRI인 경우
+//                if(temp2[i][1].equals("CLA")) temp2[i][1]="7800";
+//                if(temp2[i][1].equals("CLE")) temp2[i][1]="7400";
+//                if(temp2[i][1].equals("CMA")) temp2[i][1]="7200";
+//                if(temp2[i][1].equals("CME")) temp2[i][1]="7100";
+//                if(temp2[i][1].equals("CIR")) temp2[i][1]="7080";
+//                if(temp2[i][1].equals("CIL")) temp2[i][1]="7040";
+//                if(temp2[i][1].equals("INC")) temp2[i][1]="7020";
+//                if(temp2[i][1].equals("SPA")) temp2[i][1]="7010";
+//                if(temp2[i][1].equals("SNA")) temp2[i][1]="7008";
+//                if(temp2[i][1].equals("SZA")) temp2[i][1]="7004";
+//                if(temp2[i][1].equals("SZE")) temp2[i][1]="7002";
+//                if(temp2[i][1].equals("HLT")) temp2[i][1]="7001";
+//                if(temp2[i][1].equals("INP")) temp2[i][1]="F800";
+//                if(temp2[i][1].equals("OUT")) temp2[i][1]="F400";
+//                if(temp2[i][1].equals("SKI")) temp2[i][1]="F200";
+//                if(temp2[i][1].equals("SKO")) temp2[i][1]="F100";
+//                if(temp2[i][1].equals("ION")) temp2[i][1]="F080";
+//                if(temp2[i][1].equals("IOF")) temp2[i][1]="F040";
+//                memory[lc]=(short)(int)Integer.valueOf(temp2[i][1], 16);
+//            }
+//            else if(temp2[i][1].equals("null")) lc--; //빈 줄과 주석으로만 되어 있는 줄은 코드 오류 처리를 안하고, lc에도 영향을 안줌.
+//            else {// 4-6. 코드 오류인 경우
+//                System.out.printf("잘못된 명령어 입력: %d번째 줄의 입력이 잘못되었습니다.\n", line_num);
+//                System.exit(0); //코드를 잘못 입력한 경우 프로그램을 강제 종료
+//            }
+//            lc++;
+//        }
 
 
 
@@ -586,7 +640,7 @@ public class BC_Assembler extends CPU {
 
         System.out.println("--- 변경된 메모리 ---");
         for(short[] i : changeMemoryList) {
-            System.out.println(String.format("memory[%03X]: 변경 전 %04X 변경 후 %04X", i[0], i[1], i[2]));
+            System.out.println(String.format("memory[%03X]: %04X -> %04X", i[0], i[1], i[2]));
         }
 
         System.out.println("--- 컴퓨터를 종료합니다. ---");
