@@ -1,7 +1,7 @@
 ORG 100
 LDA AA
 ADD B
-STA CCC
+STA CCC / aaa
 ADD B
 STA E
 /add triple times

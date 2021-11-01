@@ -34,8 +34,10 @@ public class BC_Assembler extends CPU {
 
     private static void runAssembler(String file) {
 
-        // [B]
-        int org=0;      // ORG
+        // [A][B]
+        int[] orgList = new int[10];
+        int orgCount = 0;
+        // int org=0;      // ORG
         int lc=0;       // LC
 
         // Assembly Code original
@@ -53,7 +55,7 @@ public class BC_Assembler extends CPU {
         // AssemblyLine 클래스
         // 라벨 , 명령어 , 주소 , I , 코멘트
         class AssemblyLine {
-            String label; String command; String address; String indirect; String comment;
+            final String label; String command; String address; String indirect; final String comment;
             AssemblyLine(String[] line) {
                 label=line[0];
                 command=line[1];
@@ -208,9 +210,9 @@ public class BC_Assembler extends CPU {
             }
             // ORG?
             else if (assLine[i].command.equals("ORG")) { // ORG 만날 경우 lc 초기화
-                org = Integer.valueOf(assLine[i].address,16);
+                orgList[orgCount] = Integer.valueOf(assLine[i].address,16);
                 // Set LC
-                lc = org;
+                lc = orgList[orgCount++];
                 continue;
             }
             // END?
@@ -227,9 +229,7 @@ public class BC_Assembler extends CPU {
         System.out.printf("|%5s\t|%5s\t|\n", "Sym", "Addr");
         for(int i=0;i<AS_table_size;i++) {
             System.out.print("|");
-            for(int j=0;j<2;j++) {
-                System.out.printf("%5s\t|", AS_table[i][j]);
-            } System.out.println();
+            System.out.printf("%5s\t|%4X\t|\n", AS_table[i][0], Integer.parseInt(AS_table[i][1]));
         } System.out.println();
 
 
@@ -238,6 +238,8 @@ public class BC_Assembler extends CPU {
         // 4. Second Pass(어셈블리어-기계어 번역)
         lc=0;
         int line_num = 0;
+        orgCount = 0;        // reset for re-count
+
         for(int i=0;i<assLine.length;i++) {
             line_num++;
 
@@ -245,8 +247,8 @@ public class BC_Assembler extends CPU {
             if(multiEquals(assLine[i].command, new String[][]{{"ORG"},{"END"},{"DEC"},{"HEX"}})){
                 // ORG?
                 if(assLine[i].command.equals("ORG")) { // 4-1. ORG인 경우
-                    org = Integer.valueOf(assLine[i].address,16);
-                    lc = org;
+                    orgList[orgCount] = Integer.valueOf(assLine[i].address,16);
+                    lc = orgList[orgCount++];
                     continue;
                 }
                 // END?
@@ -316,11 +318,13 @@ public class BC_Assembler extends CPU {
         // [A]
         // 5. memory 상태 출력
         System.out.println("---저장된 기계어입니다---");
-        for(int i=org; i<lc; i++){
-            System.out.printf("M[%03X] = %04X\n", i, memory[i]);
+
+        for(int i=orgList[0]; i<lc; i++){
+            if( contains(i, AS_table) || memory[i]!=0)    // 메모리 값이 0이 아니거나 주소 기호 테이블에 포함된 경우에만 출력
+                System.out.printf("M[%03X] = %04X\n", i, memory[i]);
         }
         System.out.println("---기계어의 끝입니다---");
-        reg_PC = (short) org;
+        reg_PC = (short) orgList[0];
     }
 
 
@@ -332,6 +336,17 @@ public class BC_Assembler extends CPU {
 
         boolean equals = false;
         for(String[] inst : table) equals |= inst[0].equals(key);
+        return equals;
+    }
+
+    // [A]
+    // 해당 주소가 주소-기호 테이블에 들어 있는지 판단하여 반환하는 함수
+    public static boolean contains(int key, String[][] table){
+        boolean equals = false;
+        for(String[] addr : table) {
+            if(addr[1]==null) continue;
+            equals |= Integer.parseInt(addr[1]) == key;
+        }
         return equals;
     }
 
@@ -721,7 +736,7 @@ public class BC_Assembler extends CPU {
     public static void main(String[] args) {
 
         // 메인 함수는 어셈블러 실행 - {fetch - decode - execute}로만 구성. 나머지 작업은 다른 곳에서.
-        runAssembler("src/Assembly.txt");
+        runAssembler("src/Assembly2.txt");
 
         System.out.println("--- 명령어 실행 시작 ---");
         System.out.print("IR\t\tAR\tPC\tDR\t\tAC\t\tTR\t\t");
@@ -743,6 +758,7 @@ public class BC_Assembler extends CPU {
             System.out.println(String.format("memory[%03X]: %04X -> %04X", i[0], i[1], i[2]));
         }
 
+        System.out.println("1+2+...+100 = " + memory[0x10F]);
         System.out.println("--- 컴퓨터를 종료합니다. ---");
 
 
