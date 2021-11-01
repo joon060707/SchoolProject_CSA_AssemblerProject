@@ -35,28 +35,64 @@ public class BC_Assembler extends CPU {
     private static void runAssembler(String file) {
 
         // [B]
-        int org=0;
-        int lc=0;
-        // 라벨 명령어 주소 I 코멘트
-        String[] temp1 = new String[5000];
-        // 라벨 | 명령어 | 주소 | I | 코멘트
-        String[][] temp2 = new String[5000][5];
-        // 기호 | 주소
-        String[][] symbolAddress = new String[100][2];
+        int org=0;      // ORG
+        int lc=0;       // LC
 
+        // Assembly Code original
+        // 라벨 명령어 주소 I 코멘트
+        String[] AC_original = new String[4096];
+
+        // Assembly Code split
+        // 라벨 | 명령어 | 주소 | I | 코멘트
+        String[][] AC_split = new String[4096][5];
+
+        // Address-Symbol table
+        // 기호 | 주소
+        String[][] AS_table = new String[2048][2];
+
+        // AssemblyLine 클래스
+        // 라벨 , 명령어 , 주소 , I , 코멘트
+        class AssemblyLine {
+            String label; String command; String address; String indirect; String comment;
+            AssemblyLine(String[] line) {
+                label=line[0];
+                command=line[1];
+                address=line[2];
+                indirect=line[3];
+                comment=line[4];
+            }
+
+            void printLabel(){
+                System.out.printf("%6s\t|%6s\t|%6s\t|%6s\t|%6s\n", "Sym", "Inst", "Addr", "Indir", "Cmt");
+            }
+
+            void print(){
+                System.out.printf("%6s\t|",label);
+                System.out.printf("%6s\t|",command);
+                System.out.printf("%6s\t|",address);
+                System.out.printf("%6s\t|",indirect);
+                System.out.printf("%6s\n",comment);
+            }
+        }
+        // AssemblyLine 객체배열 assLine
+        AssemblyLine[] assLine = new AssemblyLine[4096];
 
 
         // [C]
         // MRI 테이블
-        String[][] table_MRI = { { "AND", "0000" }, { "ADD", "1000" }, { "LDA", "2000" },
-                { "STA", "3000" }, { "BUN", "4000" }, { "BSA", "5000" }, { "ISZ", "6000" } };
+        String[][] table_MRI = {
+                { "AND", "0000" }, { "ADD", "1000" }, { "LDA", "2000" },
+                { "STA", "3000" }, { "BUN", "4000" }, { "BSA", "5000" }, { "ISZ", "6000" }
+        };
         // non MRI 테이블
-        String[][] table_non_MRI = { {"CLA", "7800"}, {"CLE", "7400"}, {"CMA", "7200"},
+        String[][] table_non_MRI = {
+                {"CLA", "7800"}, {"CLE", "7400"}, {"CMA", "7200"},
                 {"CME", "7100"}, {"CIR", "7080"}, {"CIL", "7040"},
                 {"INC", "7020"}, {"SPA", "7010"}, {"SNA", "7008"},
                 {"SZA", "7004"}, {"SZE", "7002"}, {"HLT", "7001"},
                 {"INP", "F800"}, {"OUT", "F400"}, {"SKI", "F200"},
-                {"SKO", "F100"}, {"ION", "F080"}, {"IOF", "F040"} };
+                {"SKO", "F100"}, {"ION", "F080"}, {"IOF", "F040"}
+        };
 
 
         // [A][B]
@@ -69,7 +105,7 @@ public class BC_Assembler extends CPU {
                 if(line==null ) break;          // 파일의 끝
                 if(line.isEmpty()) continue;   // 빈 줄이면 무시하고 다음 줄 읽기
                 if(line.trim().charAt(0)=='/') continue; // 주석으로 시작하면 무시하고 다음 줄 읽기
-                temp1[cnt++] = line;
+                AC_original[cnt++] = line;
             }
             br.close();
         } catch (Exception e) {}
@@ -78,106 +114,91 @@ public class BC_Assembler extends CPU {
 
         // [B]
         // 2-1. temp1에서 라벨 필드 구분하여 temp2로 이전
-        for(int i=0;i<temp1.length;i++) {
-            if(temp1[i] != null) {
-                String[] temp = temp1[i].split(",");
-                if(temp.length==2) {
-                    temp[1] = temp[1].trim(); //temp[1]의 가장 앞부분에 공백이 있으면 제거
-                    temp2[i][0] = temp[0];
-                    temp1[i] = temp[1];
+        for(int i=0;i<AC_original.length;i++) {
+            if(AC_original[i] != null) {
+                String[] symbolSplit = AC_original[i].split(",");
+                if(symbolSplit.length==2) {
+                    symbolSplit[1] = symbolSplit[1].trim(); //temp[1]의 가장 앞부분에 공백이 있으면 제거
+                    AC_split[i][0] = symbolSplit[0];
+                    AC_original[i] = symbolSplit[1];
                 } else
-                    temp1[i] = temp[0];
+                    AC_original[i] = symbolSplit[0];
             }
         }
 
         // [B]
         // 2-2. temp1에서 코멘트 필드 구분하여 temp2로 이전
-        for(int i=0;i<temp1.length;i++) {
-            if(temp1[i] != null) {
-                String[] temp = temp1[i].split("/");
-                if(temp.length==2) {
-                    temp2[i][4] = temp[1];
-                    temp1[i] = temp[0];
+        for(int i=0;i<AC_original.length;i++) {
+            if(AC_original[i] != null) {
+                String[] commentSplit = AC_original[i].split("/");
+                if(commentSplit.length==2) {
+                    AC_split[i][4] = commentSplit[1];
+                    AC_original[i] = commentSplit[0];
                 } else
-                    temp1[i] = temp[0];
+                    AC_original[i] = commentSplit[0];
             }
         }
 
         // [B]
         // 2-3. temp1에서 명령어 필드 구분하여 temp2로 이전
-        for(int i=0;i<temp1.length;i++) {
-            if(temp1[i] != null) {
-                String[] temp = temp1[i].split(" ");
-                for(int j = 0; j<temp.length; j++) {
-                    temp2[i][j+1]=temp[j];
+        for(int i=0;i<AC_original.length;i++) {
+            if(AC_original[i] != null) {
+                String[] instSplit = AC_original[i].split(" ");
+                for(int j = 0; j<instSplit.length; j++) {
+                    AC_split[i][j+1]=instSplit[j];
                 }
             }
         }
 
         // [D]
         //명령어 비교할 때 null이 있으면 오류가 발생하므로 문자열 "null"을 넣음
-        for(int i = 0; i < temp1.length; i++) {
+        for(int i = 0; i < AC_original.length; i++) {
 
-            if(temp1[i] != null) {
-                if (temp1[i].equals("")) temp2[i][1] = "null"; //빈 줄 혹은 주석만 있는 경우
-                if(temp1[i].trim().equals("")) temp2[i][1] = "null"; //빈 줄은 아니지만 공백만 있는 경우
+            if(AC_original[i] != null) {
+                if (AC_original[i].equals("")) AC_split[i][1] = "null"; //빈 줄 혹은 주석만 있는 경우
+                if(AC_original[i].trim().equals("")) AC_split[i][1] = "null"; //빈 줄은 아니지만 공백만 있는 경우
             }
         }
 
 
 
         // [B]
-        // 예) temp2 출력
-        System.out.println("<  temp2 상태  >");
-        for(int i=0;i<cnt;i++) {
-            for(int j=0;j<5;j++) {
-                if(!temp2[i][1].equals("null")) System.out.print("|"+temp2[i][j]+"\t"); //빈 줄은 temp2의 배열을 출력하지 않고 빈 줄만 출력
-                else if(temp2[i][4] != null) System.out.print("|"+temp2[i][j]+"\t");
-            } System.out.println();
-        } System.out.println();
+        // 2-4. temp2 -> assLine 전환
+        for(int i=0;i<assLine.length;i++) {
+            assLine[i] = new AssemblyLine(AC_split[i]);
+        }
+
+        // [A] [B]
+        // 예) assLine 출력
+        System.out.println("<  assLine 상태  >");
+        assLine[0].printLabel();
+        for(int i=0;i<cnt;i++) assLine[i].print();
+         System.out.println();
 
 
-
-        // 3. First Pass(기호 주소 테이블 등록)
-//        int sac=0; // 기호 주소 카운트
-//        for(int i=0;i<temp2.length;i++) {
-//            if(temp2[i][0] != null) {
-//                symbolAddress[sac][0]=temp2[i][0];
-//                symbolAddress[sac][1]=Integer.toString(lc);
-//                sac++;
-//            } else if(temp2[i][1].equals("ORG")) { // ORG 만날 경우 lc 초기화
-//                org = Integer.valueOf(temp2[i][2],16);
-//                lc = org;
-//                continue;
-//            } else if(temp2[i][1].equals("END")) // END 만난 경우 종료
-//                break;
-//            lc++;
-//        }
 
         // [F]
-        int sac=0; // 기호 주소 카운트
+        //3. First Pass(주소-기호 테이블 등록)
+        int AS_table_size=0; // 기호 주소 카운트
 
-        for(int i=0;i<temp2.length;i++) {
+        // Scan next line of code
+        for(int i=0;i<assLine.length;i++) {
 
-            if (temp2[i][1].equals("END")) //END 슈도 명령어일 경우
-                break;
-            else if (temp2[i][1].equals("ORG")) { // ORG 만날 경우 lc 초기화
-                org = Integer.valueOf(temp2[i][2],16);
-                lc = org;
-                continue;
-            }
-            else if (temp2[i][0] != null) {
+            // Label?
+            if (assLine[i].label != null) {
+
+                // Store symbol in address-symbol table together with value of LC
                 int a = 0; // 기호표 중복 개수
 
-                for(int j=0;j<sac;j++) {//이미 기호표에 존재하는지 확인
-                    if(symbolAddress[j][0].equals(temp2[i][0])) {
+                for(int j=0;j<AS_table_size;j++) {//이미 기호표에 존재하는지 확인
+                    if(AS_table[j][0].equals(assLine[i].label)) {
                         a++;
                     }
                 }
                 if (a == 0) {
-                    symbolAddress[sac][0]=temp2[i][0];
-                    symbolAddress[sac][1]=Integer.toString(lc);
-                    sac++;
+                    AS_table[AS_table_size][0]=assLine[i].label;
+                    AS_table[AS_table_size][1]=Integer.toString(lc);
+                    AS_table_size++;
                 }
                 else {
                     System.out.println("ERROR: 이중 정의되는 기호가 있습니다."); //이미 기호표에 존재 - 이중 정의된 기호임 오류표시, 시스템 종료
@@ -185,76 +206,108 @@ public class BC_Assembler extends CPU {
                     System.exit(a);
                 }
             }
+            // ORG?
+            else if (assLine[i].command.equals("ORG")) { // ORG 만날 경우 lc 초기화
+                org = Integer.valueOf(assLine[i].address,16);
+                // Set LC
+                lc = org;
+                continue;
+            }
+            // END?
+            else if (assLine[i].command.equals("END")) //END 슈도 명령어일 경우
+                break;
+
+            // Increment LC
             lc++;
         }
 
-
-
-
         // [B]
-        // 예) 기호주소표 출력
-        System.out.println("<  기호주소표 상태  >");
-        for(int i=0;i<sac;i++) {
+        // 예) 주소-기호 테이블 출력
+        System.out.println("<  주소-기호 테이블 상태  >");
+        System.out.printf("|%5s\t|%5s\t|\n", "Sym", "Addr");
+        for(int i=0;i<AS_table_size;i++) {
             System.out.print("|");
             for(int j=0;j<2;j++) {
-                System.out.print(symbolAddress[i][j]+"\t|");
+                System.out.printf("%5s\t|", AS_table[i][j]);
             } System.out.println();
         } System.out.println();
+
+
 
         // [B][C]
         // 4. Second Pass(어셈블리어-기계어 번역)
         lc=0;
         int line_num = 0;
-        for(int i=0;i<temp2.length;i++) {
+        for(int i=0;i<assLine.length;i++) {
             line_num++;
-            if(temp2[i][1].equals("ORG")) { // 4-1. ORG인 경우
-                org = Integer.valueOf(temp2[i][2],16);
-                lc = org;
-                continue;
-            } else if(temp2[i][1].equals("END")) { // 4-2. END인 경우
-                break;
-            } else if(temp2[i][1].equals("DEC") || temp2[i][1].equals("HEX")) { // 4-3. DEC/HEX인 경우
-                if(temp2[i][1].equals("DEC")) ;
-                if(temp2[i][1].equals("HEX")) temp2[i][2] = Integer.toString(Integer.valueOf(temp2[i][2], 16));
-                memory[lc]=(short)Integer.parseInt(temp2[i][2]);
-            } else if ( temp2[i][1].equals("AND") || temp2[i][1].equals("ADD") || temp2[i][1].equals("LDA") ||
-                    temp2[i][1].equals("STA") || temp2[i][1].equals("BUN") || temp2[i][1].equals("BSA") || temp2[i][1].equals("ISZ") ) { // 4-4. MRI인 경우
-                for ( int j = 0; j < 7; j++ ) {
-                    if ( temp2[i][1].equals(table_MRI[j][0]) ) {
-                        temp2[i][1] = table_MRI[j][1];
-                        break;
-                    }
-                }
-                for(int j=0;j<symbolAddress.length;j++) {
-                    if(temp2[i][2].equals(symbolAddress[j][0])) {
-                        temp2[i][2] = symbolAddress[j][1];
-                        break;
-                    }
-                }
-                if(temp2[i][3]==null)
-                    temp2[i][3]="0";
-                else if(temp2[i][3].equals("I"))
-                    temp2[i][3]="8000";
 
-                memory[lc]=(short)(Integer.valueOf(temp2[i][1], 16) +Integer.parseInt(temp2[i][2])+ Integer.valueOf(temp2[i][3], 16));
+            // Pseudo-instruction?
+            if(multiEquals(assLine[i].command, new String[][]{{"ORG"},{"END"},{"DEC"},{"HEX"}})){
+                // ORG?
+                if(assLine[i].command.equals("ORG")) { // 4-1. ORG인 경우
+                    org = Integer.valueOf(assLine[i].address,16);
+                    lc = org;
+                    continue;
+                }
+                // END?
+                else if(assLine[i].command.equals("END")) { // 4-2. END인 경우
+                    break;
+                }
+                // then this is DEC or HEX
+                // Convert operand to binary and store in location given by LC
+                else if(assLine[i].command.equals("DEC") || assLine[i].command.equals("HEX")) { // 4-3. DEC/HEX인 경우 (DEC는 그대로)
+                    if(assLine[i].command.equals("HEX"))
+                        assLine[i].address = Integer.toString(Integer.valueOf(assLine[i].address, 16));
+                    memory[lc]=(short)Integer.parseInt(assLine[i].address);
+                }
+            }
+            // then this is normal instruction
+            else if (multiEquals(assLine[i].command, table_MRI)) { // 4-4. MRI인 경우
 
-            } else if ( temp2[i][1].equals("CLA") || temp2[i][1].equals("CLE") || temp2[i][1].equals("CMA") || temp2[i][1].equals("CME") ||
-                    temp2[i][1].equals("CIR") || temp2[i][1].equals("CIL") || temp2[i][1].equals("INC") || temp2[i][1].equals("SPA") ||
-                    temp2[i][1].equals("SNA") || temp2[i][1].equals("SZA") || temp2[i][1].equals("SZE") || temp2[i][1].equals("HLT") ||
-                    temp2[i][1].equals("INP") || temp2[i][1].equals("OUT") || temp2[i][1].equals("SKI") || temp2[i][1].equals("SKO") ||
-                    temp2[i][1].equals("ION") || temp2[i][1].equals("IOF") ) {
-                for ( int j = 0; j < table_non_MRI.length; j++) { // 4-5. non_MRI인 경우
-                    if ( temp2[i][1].equals(table_non_MRI[j][0]) ) {
-                        temp2[i][1] = table_non_MRI[j][1];
+                // Get operation code and set bits 2-4
+                for ( int j = 0; j < table_MRI.length; j++ ) {
+                    if ( assLine[i].command.equals(table_MRI[j][0]) ) {
+                        assLine[i].command = table_MRI[j][1];
                         break;
                     }
                 }
-                memory[lc]=(short)(int)Integer.valueOf(temp2[i][1], 16);
-            } else if(temp2[i][1].equals("null")) lc--; //빈 줄과 주석으로만 되어 있는 줄은 코드 오류 처리를 안하고, lc에도 영향을 안줌.
+
+                // Search address-symbol table for binary equivalent of symbolic address and set bits 5-16
+                for(int j=0;j<AS_table.length;j++) {
+                    if(assLine[i].address.equals(AS_table[j][0])) {
+                        assLine[i].address = AS_table[j][1];
+                        break;
+                    }
+                }
+
+                // I?
+                if(assLine[i].indirect==null)
+                    assLine[i].indirect="0";    // set first bit to 0
+                else if(assLine[i].indirect.equals("I"))
+                    assLine[i].indirect="8000";     // set first bit to 1
+
+                // Assembly all parts of binary instruction and store in location given by LC
+                memory[lc]=(short)(Integer.valueOf(assLine[i].command, 16) +Integer.parseInt(assLine[i].address)+ Integer.valueOf(assLine[i].indirect, 16));
+
+                // Valid non-MRI?
+            } else if (multiEquals(assLine[i].command, table_non_MRI)) {    // 4-5. non_MRI인 경우
+
+                for ( int j = 0; j < table_non_MRI.length; j++) {
+                    if ( assLine[i].command.equals(table_non_MRI[j][0]) ) {
+                        assLine[i].command = table_non_MRI[j][1];
+                        break;
+                    }
+                }
+                // Store binary equivalent of instruction in location given by LC
+                memory[lc]=(short)(int)Integer.valueOf(assLine[i].command, 16);
+            } else if(assLine[i].command.equals("null")) lc--; //빈 줄과 주석으로만 되어 있는 줄은 코드 오류 처리를 안하고, lc에도 영향을 안줌.
+
+            // Error in line of code
             else {// 4-6. 코드 오류인 경우
                 System.out.printf("잘못된 명령어 입력: %d번째 줄의 입력이 잘못되었습니다.\n", line_num);
                 System.exit(0); //코드를 잘못 입력한 경우 프로그램을 강제 종료
             }
+            // Increment LC
             lc++;
         }
 
@@ -273,6 +326,16 @@ public class BC_Assembler extends CPU {
 
     //////////////////////////////////////////////////////////////////////////////////////
 
+    // [A]
+    // 해당 명령어가 각 테이블에 해당하는지 판단하여 반환하는 함수
+    public static boolean multiEquals(String key, String[][] table){
+
+        boolean equals = false;
+        for(String[] inst : table) equals |= inst[0].equals(key);
+        return equals;
+    }
+
+    //////////////////////////////////////////////////////////////////////////////////////
 
 
 
