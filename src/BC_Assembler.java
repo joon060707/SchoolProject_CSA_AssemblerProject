@@ -8,6 +8,18 @@ public class BC_Assembler extends CPU {
 
     // 팀별로 함수 사용
 
+    /*
+    * Contributor
+    * [A] 정재준
+    * [B] 정성현
+    * [C] 정태성
+    * [D] 정희석
+    * [E] 전석균
+    * [F] 이하은
+    * [G] 남지성
+    *
+    * */
+
 
     /*
     * 코드 입력(어셈블러) 팀
@@ -19,7 +31,10 @@ public class BC_Assembler extends CPU {
     *
     * */
 
+
     private static void runAssembler(String file) {
+
+        // [B]
         int org=0;
         int lc=0;
         // 라벨 명령어 주소 I 코멘트
@@ -27,8 +42,11 @@ public class BC_Assembler extends CPU {
         // 라벨 | 명령어 | 주소 | I | 코멘트
         String[][] temp2 = new String[5000][5];
         // 기호 | 주소
-        String[][] symbolAddress = new String[10][2];
+        String[][] symbolAddress = new String[100][2];
 
+
+
+        // [C]
         // MRI 테이블
         String[][] table_MRI = { { "AND", "0000" }, { "ADD", "1000" }, { "LDA", "2000" },
                 { "STA", "3000" }, { "BUN", "4000" }, { "BSA", "5000" }, { "ISZ", "6000" } };
@@ -41,7 +59,7 @@ public class BC_Assembler extends CPU {
                 {"SKO", "F100"}, {"ION", "F080"}, {"IOF", "F040"} };
 
 
-
+        // [A][B]
         // 1. 버퍼리더에 파일 등록, 파일을 temp1에 저장
         int cnt=0;
         try {
@@ -58,7 +76,7 @@ public class BC_Assembler extends CPU {
 
 
 
-
+        // [B]
         // 2-1. temp1에서 라벨 필드 구분하여 temp2로 이전
         for(int i=0;i<temp1.length;i++) {
             if(temp1[i] != null) {
@@ -71,6 +89,8 @@ public class BC_Assembler extends CPU {
                     temp1[i] = temp[0];
             }
         }
+
+        // [B]
         // 2-2. temp1에서 코멘트 필드 구분하여 temp2로 이전
         for(int i=0;i<temp1.length;i++) {
             if(temp1[i] != null) {
@@ -82,6 +102,8 @@ public class BC_Assembler extends CPU {
                     temp1[i] = temp[0];
             }
         }
+
+        // [B]
         // 2-3. temp1에서 명령어 필드 구분하여 temp2로 이전
         for(int i=0;i<temp1.length;i++) {
             if(temp1[i] != null) {
@@ -92,6 +114,7 @@ public class BC_Assembler extends CPU {
             }
         }
 
+        // [D]
         //명령어 비교할 때 null이 있으면 오류가 발생하므로 문자열 "null"을 넣음
         for(int i = 0; i < temp1.length; i++) {
 
@@ -103,6 +126,7 @@ public class BC_Assembler extends CPU {
 
 
 
+        // [B]
         // 예) temp2 출력
         System.out.println("<  temp2 상태  >");
         for(int i=0;i<cnt;i++) {
@@ -115,20 +139,59 @@ public class BC_Assembler extends CPU {
 
 
         // 3. First Pass(기호 주소 테이블 등록)
+//        int sac=0; // 기호 주소 카운트
+//        for(int i=0;i<temp2.length;i++) {
+//            if(temp2[i][0] != null) {
+//                symbolAddress[sac][0]=temp2[i][0];
+//                symbolAddress[sac][1]=Integer.toString(lc);
+//                sac++;
+//            } else if(temp2[i][1].equals("ORG")) { // ORG 만날 경우 lc 초기화
+//                org = Integer.valueOf(temp2[i][2],16);
+//                lc = org;
+//                continue;
+//            } else if(temp2[i][1].equals("END")) // END 만난 경우 종료
+//                break;
+//            lc++;
+//        }
+
+        // [F]
         int sac=0; // 기호 주소 카운트
+
         for(int i=0;i<temp2.length;i++) {
-            if(temp2[i][0] != null) {
-                symbolAddress[sac][0]=temp2[i][0];
-                symbolAddress[sac][1]=Integer.toString(lc);
-                sac++;
-            } else if(temp2[i][1].equals("ORG")) { // ORG 만날 경우 lc 초기화
+
+            if (temp2[i][1].equals("END")) //END 슈도 명령어일 경우
+                break;
+            else if (temp2[i][1].equals("ORG")) { // ORG 만날 경우 lc 초기화
                 org = Integer.valueOf(temp2[i][2],16);
                 lc = org;
                 continue;
-            } else if(temp2[i][1].equals("END")) // END 만난 경우 종료
-                break;
+            }
+            else if (temp2[i][0] != null) {
+                int a = 0; // 기호표 중복 개수
+
+                for(int j=0;j<sac;j++) {//이미 기호표에 존재하는지 확인
+                    if(symbolAddress[j][0].equals(temp2[i][0])) {
+                        a++;
+                    }
+                }
+                if (a == 0) {
+                    symbolAddress[sac][0]=temp2[i][0];
+                    symbolAddress[sac][1]=Integer.toString(lc);
+                    sac++;
+                }
+                else {
+                    System.out.println("ERROR: 이중 정의되는 기호가 있습니다."); //이미 기호표에 존재 - 이중 정의된 기호임 오류표시, 시스템 종료
+                    System.out.println("==어셈블러 종료==");
+                    System.exit(a);
+                }
+            }
             lc++;
         }
+
+
+
+
+        // [B]
         // 예) 기호주소표 출력
         System.out.println("<  기호주소표 상태  >");
         for(int i=0;i<sac;i++) {
@@ -138,6 +201,7 @@ public class BC_Assembler extends CPU {
             } System.out.println();
         } System.out.println();
 
+        // [B][C]
         // 4. Second Pass(어셈블리어-기계어 번역)
         lc=0;
         int line_num = 0;
@@ -170,7 +234,7 @@ public class BC_Assembler extends CPU {
                 if(temp2[i][3]==null)
                     temp2[i][3]="0";
                 else if(temp2[i][3].equals("I"))
-                    temp2[i][3]="7000";
+                    temp2[i][3]="8000";
 
                 memory[lc]=(short)(Integer.valueOf(temp2[i][1], 16) +Integer.parseInt(temp2[i][2])+ Integer.valueOf(temp2[i][3], 16));
 
@@ -194,70 +258,9 @@ public class BC_Assembler extends CPU {
             lc++;
         }
 
-//        // 4. Second Pass(어셈블리어-기계어 번역)
-//        lc=0;
-//        int line_num = 0;
-//        for(int i=0;i<temp2.length;i++) {
-//            line_num++;
-//            if(temp2[i][1].equals("ORG")) { // 4-1. ORG인 경우
-//                org = Integer.valueOf(temp2[i][2],16);
-//                lc = org;
-//                continue;
-//            } else if(temp2[i][1].equals("END")) { // 4-2. END인 경우
-//                break;
-//            } else if(temp2[i][1].equals("DEC") || temp2[i][1].equals("HEX")) { // 4-3. DEC/HEX인 경우
-//                if(temp2[i][1].equals("DEC")) ;
-//                if(temp2[i][1].equals("HEX")) temp2[i][2] = Integer.toString(Integer.valueOf(temp2[i][2], 16));
-//                memory[lc]=(short)Integer.parseInt(temp2[i][2]);
-//            } else if(temp2[i][1].equals("AND") || temp2[i][1].equals("ADD") || temp2[i][1].equals("LDA") ||
-//                    temp2[i][1].equals("STA") || temp2[i][1].equals("BUN") || temp2[i][1].equals("BSA") || temp2[i][1].equals("ISZ")) {  // 4-4. MRI인 경우
-//                if(temp2[i][1].equals("AND")) temp2[i][1]="0000";
-//                if(temp2[i][1].equals("ADD")) temp2[i][1]="1000";
-//                if(temp2[i][1].equals("LDA")) temp2[i][1]="2000";
-//                if(temp2[i][1].equals("STA")) temp2[i][1]="3000";
-//                if(temp2[i][1].equals("BUN")) temp2[i][1]="4000";
-//                if(temp2[i][1].equals("BSA")) temp2[i][1]="5000";
-//                if(temp2[i][1].equals("ISZ")) temp2[i][1]="6000";
-//                for(int j=0;j<symbolAddress.length;j++)
-//                    if(temp2[i][2].equals(symbolAddress[j][0])) temp2[i][2] = symbolAddress[j][1];
-//                if(temp2[i][3]==null) temp2[i][3]="0";
-//                else if(temp2[i][3].equals("I")) temp2[i][3]="7000";
-//                memory[lc]=(short)((int)Integer.valueOf(temp2[i][1], 16)+Integer.parseInt(temp2[i][2])+(int)Integer.valueOf(temp2[i][3], 16));
-//            } else if(temp2[i][1].equals("CLA") || temp2[i][1].equals("CLE") || temp2[i][1].equals("CMA") || temp2[i][1].equals("CME") ||
-//                    temp2[i][1].equals("CIR") || temp2[i][1].equals("CIL") || temp2[i][1].equals("INC") || temp2[i][1].equals("SPA") ||
-//                    temp2[i][1].equals("SNA") || temp2[i][1].equals("SZA") || temp2[i][1].equals("SZE") || temp2[i][1].equals("HLT") ||
-//                    temp2[i][1].equals("INP") || temp2[i][1].equals("OUT") || temp2[i][1].equals("SKI") || temp2[i][1].equals("SKO") ||
-//                    temp2[i][1].equals("ION") || temp2[i][1].equals("IOF")) {  // 4-5. non_MRI인 경우
-//                if(temp2[i][1].equals("CLA")) temp2[i][1]="7800";
-//                if(temp2[i][1].equals("CLE")) temp2[i][1]="7400";
-//                if(temp2[i][1].equals("CMA")) temp2[i][1]="7200";
-//                if(temp2[i][1].equals("CME")) temp2[i][1]="7100";
-//                if(temp2[i][1].equals("CIR")) temp2[i][1]="7080";
-//                if(temp2[i][1].equals("CIL")) temp2[i][1]="7040";
-//                if(temp2[i][1].equals("INC")) temp2[i][1]="7020";
-//                if(temp2[i][1].equals("SPA")) temp2[i][1]="7010";
-//                if(temp2[i][1].equals("SNA")) temp2[i][1]="7008";
-//                if(temp2[i][1].equals("SZA")) temp2[i][1]="7004";
-//                if(temp2[i][1].equals("SZE")) temp2[i][1]="7002";
-//                if(temp2[i][1].equals("HLT")) temp2[i][1]="7001";
-//                if(temp2[i][1].equals("INP")) temp2[i][1]="F800";
-//                if(temp2[i][1].equals("OUT")) temp2[i][1]="F400";
-//                if(temp2[i][1].equals("SKI")) temp2[i][1]="F200";
-//                if(temp2[i][1].equals("SKO")) temp2[i][1]="F100";
-//                if(temp2[i][1].equals("ION")) temp2[i][1]="F080";
-//                if(temp2[i][1].equals("IOF")) temp2[i][1]="F040";
-//                memory[lc]=(short)(int)Integer.valueOf(temp2[i][1], 16);
-//            }
-//            else if(temp2[i][1].equals("null")) lc--; //빈 줄과 주석으로만 되어 있는 줄은 코드 오류 처리를 안하고, lc에도 영향을 안줌.
-//            else {// 4-6. 코드 오류인 경우
-//                System.out.printf("잘못된 명령어 입력: %d번째 줄의 입력이 잘못되었습니다.\n", line_num);
-//                System.exit(0); //코드를 잘못 입력한 경우 프로그램을 강제 종료
-//            }
-//            lc++;
-//        }
 
 
-
+        // [A]
         // 5. memory 상태 출력
         System.out.println("---저장된 기계어입니다---");
         for(int i=org; i<lc; i++){
@@ -282,6 +285,7 @@ public class BC_Assembler extends CPU {
      * */
 
 
+    // [A]
     static void fetch(){
         // T0
         reg_AR = reg_PC;
@@ -296,7 +300,10 @@ public class BC_Assembler extends CPU {
     // decode 함수에서 해석된 임시 디코드 문자열
     static String decodedInstruction;
 
+
     static void decode(){
+
+        // [A]
         // T2
         ff_I = reg_IR<0;
         reg_AR = (short) (reg_IR & 0x0fff);
@@ -307,6 +314,7 @@ public class BC_Assembler extends CPU {
         byte opc = (byte)(reg_IR >>> 12);
 //        System.out.println(opc);
 
+        // [A][G]
         if(opc == 7){      // 레지스터 참조 명령
             switch (reg_IR){
                 case 0x7800: decodedInstruction = "CLA"; break;
@@ -351,7 +359,6 @@ public class BC_Assembler extends CPU {
             }
         }
 
-
         System.out.printf("해석 결과: %s %s %s\n", decodedInstruction, (reg_IR & 0x00007000) >> 12 == 7 ? "" : String.format("%03X", reg_IR & 0x00000fff), ff_I?"I":"");
 
     }
@@ -370,12 +377,14 @@ public class BC_Assembler extends CPU {
      * */
 
 
+    //
     // 이 변수들은 출력을 보조하는 변수들이므로 어셈블러나 Basic Computer에는 영향을 주지 않음.
     static List<short[]> changeMemoryList = new ArrayList<>(); //STA 사용시 변화된 메모리 주소 저장하는 리스트
     //static int[] changeMemory = new int[3]; // 주소 : 이전 값 : 이후 값
 
 
     //메모리 참조 명령
+    // [G]
     static void AND() {
         // T4
         reg_DR = memory[reg_AR];
@@ -385,6 +394,7 @@ public class BC_Assembler extends CPU {
     }
 
 
+    // [A]
     static void ADD(){
         // T4
         reg_DR = memory[reg_AR];
@@ -397,7 +407,7 @@ public class BC_Assembler extends CPU {
         reg_AC += reg_DR;
     }
 
-
+    // [A]
     static void LDA(){
         // T4
         reg_DR = memory[reg_AR];
@@ -406,6 +416,7 @@ public class BC_Assembler extends CPU {
         reg_AC = reg_DR;
     }
 
+    // [A][G]
     static void STA(){
         //메모리 변화 출력
         short[] changeMemory = new short[3];
@@ -417,12 +428,13 @@ public class BC_Assembler extends CPU {
         memory[reg_AR] = reg_AC;
     }
 
+    // [G]
     static void BUN() {
         // T4
         reg_PC = reg_AR;
     }
 
-
+    // [G]
     static void BSA() {
         // T4
         memory[reg_AR++] = reg_PC;
@@ -431,6 +443,7 @@ public class BC_Assembler extends CPU {
         reg_PC = reg_AR;
     }
 
+    // [G]
     static void ISZ() {
         //T4
         reg_DR = memory[reg_AR];
@@ -451,22 +464,28 @@ public class BC_Assembler extends CPU {
 
 
     //레지스터 참조 명령
+
+    // [C]
     static void CLA() {
         reg_AC = 0;
     }
 
+    // [C]
     static void CLE() {
         ff_E = false;
     }
 
+    // [C]
     static void CMA() {
         reg_AC = (short) ~reg_AC;
     }
 
+    // [C]
     static void CME() {
         ff_E = !ff_E;
     }
 
+    // [G]
     static void CIR() {
         short temp = (short)(reg_AC & 0x0001);
         //AC >> 1
@@ -479,10 +498,9 @@ public class BC_Assembler extends CPU {
         }
         //E << AC(0)
         ff_E = temp == 1;
-
-
     }
 
+    // [G]
     static void CIL() {
         short temp = (short)(reg_AC & 0x8000);
         //AC << 1
@@ -497,58 +515,72 @@ public class BC_Assembler extends CPU {
         ff_E = temp == (short) 0x8000;
     }
 
+    // [C]
     static void INC() {
         reg_AC++;
     }
 
+    // [C]
     static void SPA() {
         if (reg_AC > 0 )
             reg_PC++;
     }
 
+    // [C]
     static void SNA() {
         if (reg_AC < 0 )
             reg_PC++;
     }
 
+    // [C]
     static void SZA() {
         if (reg_AC == 0)
             reg_PC++;
     }
 
+    // [C]
     static void SZE() {
         if (!ff_E)
             reg_PC++;
     }
+
+    // [A]
     static void HLT(){
         ff_S = false;
     }
 
     // 입출력 명령
+
+    // [C]
     static void INP() {
         reg_AC = reg_INPR;
         ff_FGI = false;
     }
 
+    // [C]
     static void OUT() {
         reg_OUTR = (byte) reg_AC;
         ff_FGO = false;
     }
 
+    // [C]
     static void SKI() {
         if (ff_FGI)
             reg_PC++;
     }
 
+    // [C]
     static void SKO() {
         if (ff_FGO)
             reg_PC++;
     }
 
+    // [C]
     static void ION() {
         ff_IEN = true;
     }
 
+    // [C]
     static void IOF() {
         ff_IEN = false;
     }
@@ -569,6 +601,7 @@ public class BC_Assembler extends CPU {
     static void execute(){
 
 
+        // [A] [G]
         switch (decodedInstruction){
             case "AND": AND(); break;
             case "ADD": ADD(); break;
@@ -599,6 +632,8 @@ public class BC_Assembler extends CPU {
             case "IOF": IOF(); break;
             default: break;
         }
+
+        // [A] [G]
         // 모든 명령이 끝나면 공통으로 SC=0이 됨.
         reg_SC = 0;
         System.out.print("IR\t\tAR\tPC\tDR\t\tAC\t\tTR\t\t");
@@ -619,6 +654,7 @@ public class BC_Assembler extends CPU {
 
 
 
+    // [A]
     public static void main(String[] args) {
 
         // 메인 함수는 어셈블러 실행 - {fetch - decode - execute}로만 구성. 나머지 작업은 다른 곳에서.
@@ -638,6 +674,7 @@ public class BC_Assembler extends CPU {
         }
         System.out.println("--- 명령어 실행 끝 ---");
 
+        // [G]
         System.out.println("--- 변경된 메모리 ---");
         for(short[] i : changeMemoryList) {
             System.out.println(String.format("memory[%03X]: %04X -> %04X", i[0], i[1], i[2]));

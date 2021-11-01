@@ -1,7 +1,7 @@
 ORG 100
-LDA A
+LDA AA
 ADD B
-STA C
+STA CCC
 ADD B
 STA E
 /add triple times
@@ -11,9 +11,11 @@ ADD B
 STA D
 HLT
 / below are operands
-A, DEC 83
+AA, DEC 83
 B, DEC -23
-C, DEC 3
+CCC, DEC 3
 D, DEC 4
 E, DEC 5
+F, DEC 99
+/AA, DEC 123
 END
