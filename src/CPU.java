@@ -43,6 +43,28 @@ public class CPU {
     // Flag Input/Output FF
     protected static boolean ff_FGI = false;
     protected static boolean ff_FGO = false;
+
+
+    public static void reboot(){
+        System.out.println("--- 컴퓨터를 재부팅합니다. ---");
+        memory = new short[4096];
+        reg_AR = 0;
+        reg_PC = 0;
+        reg_DR = 0;
+        reg_AC = 0;
+        reg_IR = 0;
+        reg_TR = 0;
+        reg_INPR = 0;
+        reg_OUTR = 0;
+        reg_SC = 0;
+        ff_I = false;
+        ff_S = true;
+        ff_E = false;
+        ff_R = false;
+        ff_IEN = true;
+        ff_FGI = false;
+        ff_FGO = false;
+    }
     
     
 }

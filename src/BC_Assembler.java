@@ -731,12 +731,10 @@ public class BC_Assembler extends CPU {
     //////////////////////////////////////////////////////////////////////////////////////
 
 
-
-    // [A]
-    public static void main(String[] args) {
+    public static void runComputer(String filename){
 
         // 메인 함수는 어셈블러 실행 - {fetch - decode - execute}로만 구성. 나머지 작업은 다른 곳에서.
-        runAssembler("src/Assembly2.txt");
+        runAssembler(filename);
 
         System.out.println("--- 명령어 실행 시작 ---");
         System.out.print("IR\t\tAR\tPC\tDR\t\tAC\t\tTR\t\t");
@@ -746,9 +744,9 @@ public class BC_Assembler extends CPU {
 
 
         while (ff_S){       // start-stop flip-flop이 1일 때만 작동.
-             fetch();
-             decode();
-             execute();
+            fetch();
+            decode();
+            execute();
         }
         System.out.println("--- 명령어 실행 끝 ---");
 
@@ -758,9 +756,22 @@ public class BC_Assembler extends CPU {
             System.out.println(String.format("memory[%03X]: %04X -> %04X", i[0], i[1], i[2]));
         }
 
-        System.out.println("1+2+...+100 = " + memory[0x10F]);
-        System.out.println("--- 컴퓨터를 종료합니다. ---");
 
+        System.out.println("--- 컴퓨터를 종료합니다. ---");
+    }
+
+
+    // [A]
+    public static void main(String[] args) {
+
+        runComputer("src/Assembly2.txt");
+        System.out.println("1+2+...+100 = " + memory[0x10F]);
+        reboot();
+        runComputer("src/Assembly.txt");
+        reboot();
+        runComputer("src/Assembly2.txt");
+        reboot();
+        runComputer("src/Assembly.txt");
 
     }
 
