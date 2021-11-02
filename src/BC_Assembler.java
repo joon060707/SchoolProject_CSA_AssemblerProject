@@ -730,7 +730,7 @@ public class BC_Assembler extends CPU {
 
     //////////////////////////////////////////////////////////////////////////////////////
 
-
+    // [A]
     public static void runComputer(String filename){
 
         // 메인 함수는 어셈블러 실행 - {fetch - decode - execute}로만 구성. 나머지 작업은 다른 곳에서.
@@ -765,13 +765,16 @@ public class BC_Assembler extends CPU {
     public static void main(String[] args) {
 
         runComputer("src/Assembly2.txt");
-        System.out.println("1+2+...+100 = " + memory[0x10F]);
+        System.out.println("M[0x10F]="+memory[0x10F]);
         reboot();
+        System.out.println("M[0x10F]="+memory[0x10F]);
+
         runComputer("src/Assembly.txt");
+        System.out.println("M[0x10F]="+memory[0x10F]);
         reboot();
+
         runComputer("src/Assembly2.txt");
-        reboot();
-        runComputer("src/Assembly.txt");
+        System.out.println("M[0x10F]="+memory[0x10F]);
 
     }
 
