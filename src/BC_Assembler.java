@@ -840,6 +840,12 @@ public class BC_Assembler extends CPU {
     // [A]
     public static void main(String[] args) {
 
+//        for(String t:args){
+//            runComputer(t);
+//            reboot();
+//        }
+
+
         runComputer("src/Assembly2.txt");
         System.out.println("M[0x10F]="+memory[0x10F]);
         reboot();
