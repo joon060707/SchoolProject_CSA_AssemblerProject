@@ -788,7 +788,7 @@ public class BC_Assembler extends CPU {
             if(ff_R){
                 // interrupt cycle
                 //T0
-                reg_AR =0;
+                reg_AR=0;
                 reg_TR=reg_PC;
                 reg_SC++;
                 //T1
@@ -812,11 +812,13 @@ public class BC_Assembler extends CPU {
                 }
 
                 execute();
-                line++;
-                if(line==10){
-                    ff_FGI=true;
-                    reg_INPR = 'a';
-                }
+
+                // 인터럽트 발생 코드
+//                line++;
+//                if(line==10){
+//                    ff_FGI=true;
+//                    reg_INPR = 'a';
+//                }
             }
 
 
@@ -838,17 +840,17 @@ public class BC_Assembler extends CPU {
     // [A]
     public static void main(String[] args) {
 
-//        runComputer("src/Assembly2.txt");
-//        System.out.println("M[0x10F]="+memory[0x10F]);
-//        reboot();
-//        System.out.println("M[0x10F]="+memory[0x10F]);
+        runComputer("src/Assembly2.txt");
+        System.out.println("M[0x10F]="+memory[0x10F]);
+        reboot();
+        System.out.println("M[0x10F]="+memory[0x10F]);
 
         runComputer("src/Assembly2.txt");
         System.out.println("M[0x10F]="+memory[0x10F]);
         reboot();
 
-//        runComputer("src/Assembly2.txt");
-//        System.out.println("M[0x10F]="+memory[0x10F]);
+        runComputer("src/Assembly2.txt");
+        System.out.println("M[0x10F]="+memory[0x10F]);
 
     }
 
