@@ -1,4 +1,4 @@
-ORG 100
+ORG 10
 LDA ADS
 STA PTR
 LDA NBR
@@ -16,6 +16,7 @@ NBR, DEC -100
 CTR, HEX 0
 SUM, HEX 0
 OPR, ORG 150
+/ operand starts
 DEC 1
 DEC 2
 DEC 3

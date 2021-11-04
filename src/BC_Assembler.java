@@ -34,8 +34,11 @@ public class BC_Assembler extends CPU {
 
     private static void runAssembler(String file) {
 
+        System.out.println("--- 어셈블러 실행 시작 ---");
+
         // [A][B]
         int[] orgList = new int[10];
+        orgList[0] = -1; // Valid ORG flag
         int orgCount = 0;
         // int org=0;      // ORG
         int lc=0;       // LC
@@ -114,17 +117,26 @@ public class BC_Assembler extends CPU {
 
 
 
-        // [B]
+        // [B] [D]
         // 2-1. temp1에서 라벨 필드 구분하여 temp2로 이전
         for(int i=0;i<AC_original.length;i++) {
             if(AC_original[i] != null) {
-                String[] symbolSplit = AC_original[i].split(",");
+                String[] commentText = AC_original[i].split("/"); //주석에 ,(콤마)가 들어가는 경우는 따로 분리
+                String nonComment = commentText[0].trim();
+                String[] symbolSplit =  nonComment.split(",");
                 if(symbolSplit.length==2) {
                     symbolSplit[1] = symbolSplit[1].trim(); //temp[1]의 가장 앞부분에 공백이 있으면 제거
                     AC_split[i][0] = symbolSplit[0];
                     AC_original[i] = symbolSplit[1];
-                } else
+                } else {
+                    if(nonComment.charAt(nonComment.length() - 1) == ',') {//라벨만 입력된 경우
+                        AC_split[i][0] = symbolSplit[0];
+                        AC_original[i] = "-";
+                        continue;
+                    }
                     AC_original[i] = symbolSplit[0];
+                }
+                if(commentText.length == 2) AC_original[i] += "/" + commentText[1];
             }
         }
 
@@ -172,10 +184,17 @@ public class BC_Assembler extends CPU {
 
         // [A] [B]
         // 예) assLine 출력
-        System.out.println("<  assLine 상태  >");
+        System.out.println("<  어셈블리어 분석 결과  >");
         assLine[0].printLabel();
         for(int i=0;i<cnt;i++) assLine[i].print();
          System.out.println();
+
+
+         // 첫 줄이 ORG가 아닌 경우 ORG 0이 있다고 가정하고 orgCount 1 증가, 첫 org=0 대입.
+         if(!assLine[0].command.equals("ORG")){
+             orgList[0] = 0;
+             orgCount++;
+         }
 
 
 
@@ -185,6 +204,10 @@ public class BC_Assembler extends CPU {
 
         // Scan next line of code
         for(int i=0;i<assLine.length;i++) {
+
+
+
+
 
             // Label?
             if (assLine[i].label != null) {
@@ -234,17 +257,28 @@ public class BC_Assembler extends CPU {
 
 
 
+
+
+
+
         // [B][C]
         // 4. Second Pass(어셈블리어-기계어 번역)
         lc=0;
         int line_num = 0;
         orgCount = 0;        // reset for re-count
 
+
+        // 첫 줄이 ORG가 아닌 경우 ORG 0이 있다고 가정하고 orgCount 1 증가, 첫 org=0 대입.
+        if(!assLine[0].command.equals("ORG")){
+            orgList[0] = 0;
+            orgCount++;
+        }
+
         for(int i=0;i<assLine.length;i++) {
             line_num++;
 
             // Pseudo-instruction?
-            if(multiEquals(assLine[i].command, new String[][]{{"ORG"},{"END"},{"DEC"},{"HEX"}})){
+            if(multiEquals(assLine[i].command, new String[][]{{"ORG"},{"END"},{"DEC"},{"HEX"},{"-"}})){//"-"는 라벨만 입력된 줄
                 // ORG?
                 if(assLine[i].command.equals("ORG")) { // 4-1. ORG인 경우
                     orgList[orgCount] = Integer.valueOf(assLine[i].address,16);
@@ -312,6 +346,10 @@ public class BC_Assembler extends CPU {
             // Increment LC
             lc++;
         }
+
+
+
+
 
 
 
@@ -639,6 +677,7 @@ public class BC_Assembler extends CPU {
     static void OUT() {
         reg_OUTR = (byte) reg_AC;
         ff_FGO = false;
+        System.out.println("OUT 출력값: "+(char) reg_OUTR);
     }
 
     // [C]
@@ -742,11 +781,46 @@ public class BC_Assembler extends CPU {
         System.out.print(String.format("%04X\t%03X\t%03X\t%04X\t%04X\t%04X\t", reg_IR, reg_AR, reg_PC, reg_DR, reg_AC, reg_TR));
         System.out.println(String.format("%X\t%X\t%X", ff_I?1:0, ff_S?1:0, ff_E?1:0));
 
+        int line = 0;
 
         while (ff_S){       // start-stop flip-flop이 1일 때만 작동.
-            fetch();
-            decode();
-            execute();
+
+            if(ff_R){
+                // interrupt cycle
+                //T0
+                reg_AR =0;
+                reg_TR=reg_PC;
+                reg_SC++;
+                //T1
+                memory[reg_AR] = reg_TR;
+                reg_PC = 0;
+                reg_SC++;
+                //T2
+                reg_PC++;
+                ff_IEN=true;
+                ff_R = false;
+                reg_SC = 0;
+
+            } else{
+
+                fetch();
+                decode();
+
+                // IEN, FGI, FGO 체크
+                if(ff_IEN){
+                    ff_R = ff_FGI || ff_FGO;
+                }
+
+                execute();
+                line++;
+                if(line==10){
+                    ff_FGI=true;
+                    reg_INPR = 'a';
+                }
+            }
+
+
+
         }
         System.out.println("--- 명령어 실행 끝 ---");
 
@@ -764,17 +838,17 @@ public class BC_Assembler extends CPU {
     // [A]
     public static void main(String[] args) {
 
-        runComputer("src/Assembly2.txt");
-        System.out.println("M[0x10F]="+memory[0x10F]);
-        reboot();
-        System.out.println("M[0x10F]="+memory[0x10F]);
-
-        runComputer("src/Assembly.txt");
-        System.out.println("M[0x10F]="+memory[0x10F]);
-        reboot();
+//        runComputer("src/Assembly2.txt");
+//        System.out.println("M[0x10F]="+memory[0x10F]);
+//        reboot();
+//        System.out.println("M[0x10F]="+memory[0x10F]);
 
         runComputer("src/Assembly2.txt");
         System.out.println("M[0x10F]="+memory[0x10F]);
+        reboot();
+
+//        runComputer("src/Assembly2.txt");
+//        System.out.println("M[0x10F]="+memory[0x10F]);
 
     }
 
