@@ -205,10 +205,6 @@ public class BC_Assembler extends CPU {
         // Scan next line of code
         for(int i=0;i<assLine.length;i++) {
 
-
-
-
-
             // Label?
             if (assLine[i].label != null) {
 
@@ -261,7 +257,7 @@ public class BC_Assembler extends CPU {
 
 
 
-        // [B][C]
+        // [B][C][D]
         // 4. Second Pass(어셈블리어-기계어 번역)
         lc=0;
         int line_num = 0;
@@ -492,11 +488,10 @@ public class BC_Assembler extends CPU {
      *
      * */
 
-
-    //
     // 이 변수들은 출력을 보조하는 변수들이므로 어셈블러나 Basic Computer에는 영향을 주지 않음.
-    static List<short[]> changeMemoryList = new ArrayList<>(); //STA 사용시 변화된 메모리 주소 저장하는 리스트
-    //static int[] changeMemory = new int[3]; // 주소 : 이전 값 : 이후 값
+    static List<short[]> changedMemoryList = new ArrayList<>(); //STA 사용시 변화된 메모리 주소 저장하는 리스트
+
+    static StringBuilder string_OUT = new StringBuilder(); //인터럽트 출력 문자열
 
 
     //메모리 참조 명령
@@ -534,12 +529,14 @@ public class BC_Assembler extends CPU {
 
     // [A][G]
     static void STA(){
+
         //메모리 변화 출력
         short[] changeMemory = new short[3];
         changeMemory[0] = reg_AR; // 변화할 메모리 주소
         changeMemory[1] = memory[reg_AR]; //변화할 메모리 이전 값
         changeMemory[2] = reg_AC; //변화할 메모리 이후 값
-        changeMemoryList.add(changeMemory); //변화된 메모리 주소 저장
+        changedMemoryList.add(changeMemory); //변화된 메모리 주소 저장
+
         // T4
         memory[reg_AR] = reg_AC;
     }
@@ -677,7 +674,10 @@ public class BC_Assembler extends CPU {
     static void OUT() {
         reg_OUTR = (byte) reg_AC;
         ff_FGO = false;
+
+        // 출력용
         System.out.println("OUT 출력값: "+(char) reg_OUTR);
+        string_OUT.append((char) reg_OUTR);
     }
 
     // [C]
@@ -717,6 +717,10 @@ public class BC_Assembler extends CPU {
      * */
     static void execute(){
 
+        if(reg_IR == 0xFFFFC000){
+            isInterrupt = false;
+            System.out.println("--- 인터럽트 종료 ---");
+        }
 
         // [A] [G]
         switch (decodedInstruction){
@@ -755,12 +759,12 @@ public class BC_Assembler extends CPU {
         reg_SC = 0;
         System.out.print("IR\t\tAR\tPC\tDR\t\tAC\t\tTR\t\t");
         System.out.print("I\tS\tE");
-        for(short[] m : changeMemoryList)
+        for(short[] m : changedMemoryList)
             System.out.printf("\tM[%03X]", m[0]);
         System.out.println();
         System.out.print(String.format("%04X\t%03X\t%03X\t%04X\t%04X\t%04X\t", reg_IR, reg_AR, reg_PC, reg_DR, reg_AC, reg_TR));
         System.out.print(String.format("%X\t%X\t%X", ff_I?1:0, ff_S?1:0, ff_E?1:0));
-        for(short[] m : changeMemoryList)
+        for(short[] m : changedMemoryList)
             System.out.printf("\t%04X", m[2]);
         System.out.println();
     }
@@ -769,8 +773,11 @@ public class BC_Assembler extends CPU {
 
     //////////////////////////////////////////////////////////////////////////////////////
 
+    static boolean isInterrupt = false;
+
+
     // [A]
-    public static void runComputer(String filename){
+    public static void runComputer(String filename, short[]... interrupt){
 
         // 메인 함수는 어셈블러 실행 - {fetch - decode - execute}로만 구성. 나머지 작업은 다른 곳에서.
         runAssembler(filename);
@@ -781,7 +788,9 @@ public class BC_Assembler extends CPU {
         System.out.print(String.format("%04X\t%03X\t%03X\t%04X\t%04X\t%04X\t", reg_IR, reg_AR, reg_PC, reg_DR, reg_AC, reg_TR));
         System.out.println(String.format("%X\t%X\t%X", ff_I?1:0, ff_S?1:0, ff_E?1:0));
 
+        // 실행되는 명령어 번째(인터럽트 제외)
         int line = 0;
+
 
         while (ff_S){       // start-stop flip-flop이 1일 때만 작동.
 
@@ -797,9 +806,12 @@ public class BC_Assembler extends CPU {
                 reg_SC++;
                 //T2
                 reg_PC++;
-                ff_IEN=true;
+                ff_IEN=false;
                 ff_R = false;
                 reg_SC = 0;
+
+                // 이 경우 인터럽트 시작
+                isInterrupt = true;
 
             } else{
 
@@ -810,15 +822,29 @@ public class BC_Assembler extends CPU {
                 if(ff_IEN){
                     ff_R = ff_FGI || ff_FGO;
                 }
-
                 execute();
 
+
+
+                // 인터럽트가 아닐때만 line 증가
+                if(!isInterrupt) line++;
+//                System.out.println(line);
+
                 // 인터럽트 발생 코드
-//                line++;
-//                if(line==10){
-//                    ff_FGI=true;
-//                    reg_INPR = 'a';
-//                }
+                for(short[] interruptCase : interrupt){
+                    short where = interruptCase[0];
+                    char ch = (char) interruptCase[1];
+                    if(line==where && where>0 && ch>0) {
+                            System.out.println("--- 인터럽트 발생 ---");
+                            ff_FGI=true;
+                            reg_INPR = (byte) ch;
+                            break;
+                    }
+                }
+
+
+
+
             }
 
 
@@ -828,10 +854,15 @@ public class BC_Assembler extends CPU {
 
         // [G]
         System.out.println("--- 변경된 메모리 ---");
-        for(short[] i : changeMemoryList) {
+        for(short[] i : changedMemoryList) {
             System.out.println(String.format("memory[%03X]: %04X -> %04X", i[0], i[1], i[2]));
         }
 
+        // 인터럽트로 들어온 문자열 최종 출력
+        if(string_OUT.length()>0) {
+            System.out.println("입력받은 문자열: "+string_OUT);
+            string_OUT.delete(0, string_OUT.length());
+        }
 
         System.out.println("--- 컴퓨터를 종료합니다. ---");
     }
@@ -840,23 +871,29 @@ public class BC_Assembler extends CPU {
     // [A]
     public static void main(String[] args) {
 
+        // jar 파일 전용
 //        for(String t:args){
 //            runComputer(t);
 //            reboot();
 //        }
 
+        // 테스트 인터럽트 (인터럽트를 주는 위치, 문자)
+        short[][] interrupts = {{10, 'h'}, {20, 'e'}, {40, 'l'}, {50, 'l'}, {100, 'o'}, {120, ','}, {140, ' '},
+                {160, 'w'}, {200, 'o'}, {240, 'r'}, {300, 'l'}, {360, 'd'}, {390, '!'}};
 
-        runComputer("src/Assembly2.txt");
+        runComputer("src/Assembly3.txt", interrupts);
         System.out.println("M[0x10F]="+memory[0x10F]);
-        reboot();
-        System.out.println("M[0x10F]="+memory[0x10F]);
+        changedMemoryList.clear();
+//        reboot();
+//        runComputer("src/Assembly.txt");
 
-        runComputer("src/Assembly2.txt");
-        System.out.println("M[0x10F]="+memory[0x10F]);
-        reboot();
 
-        runComputer("src/Assembly2.txt");
-        System.out.println("M[0x10F]="+memory[0x10F]);
+//        System.out.println("M[0x10F]="+memory[0x10F]);
+//        changedMemoryList.clear();
+//        reboot();
+//
+//        runComputer("src/Assembly2.txt");
+//        System.out.println("M[0x10F]="+memory[0x10F]);
 
     }
 
