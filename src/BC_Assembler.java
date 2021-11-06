@@ -794,6 +794,7 @@ public class BC_Assembler extends CPU {
 
         while (ff_S){       // start-stop flip-flop이 1일 때만 작동.
 
+            // R?
             if(ff_R){
                 // interrupt cycle
                 //T0
@@ -814,10 +815,10 @@ public class BC_Assembler extends CPU {
                 isInterrupt = true;
 
             } else{
+                // instruction cycle
 
                 fetch();
                 decode();
-
                 // IEN, FGI, FGO 체크
                 if(ff_IEN){
                     ff_R = ff_FGI || ff_FGO;
@@ -826,11 +827,11 @@ public class BC_Assembler extends CPU {
 
 
 
+                // 인터럽트 발생 코드
                 // 인터럽트가 아닐때만 line 증가
                 if(!isInterrupt) line++;
 //                System.out.println(line);
 
-                // 인터럽트 발생 코드
                 for(short[] interruptCase : interrupt){
                     short where = interruptCase[0];
                     char ch = (char) interruptCase[1];
@@ -841,14 +842,7 @@ public class BC_Assembler extends CPU {
                             break;
                     }
                 }
-
-
-
-
             }
-
-
-
         }
         System.out.println("--- 명령어 실행 끝 ---");
 
