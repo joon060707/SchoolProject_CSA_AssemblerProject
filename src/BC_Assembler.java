@@ -222,10 +222,13 @@ public class BC_Assembler extends CPU {
                     AS_table_size++;
                 }
                 else {
-                    System.out.println("ERROR: 이중 정의되는 기호가 있습니다."); //이미 기호표에 존재 - 이중 정의된 기호임 오류표시, 시스템 종료
-                    System.out.println("==어셈블러 종료==");
+                    System.out.println("[ERROR] 이중 정의되는 기호가 있어 어셈블러와 컴퓨터를 강제종료합니다."); //이미 기호표에 존재 - 이중 정의된 기호임 오류표시, 시스템 종료
                     System.exit(a);
                 }
+            }
+            else if (assLine[i].command==null){
+                System.out.println("[ERROR] END가 정의되지 않아 어셈블러와 컴퓨터를 강제종료합니다.");
+                System.exit(i);
             }
             // ORG?
             else if (assLine[i].command.equals("ORG")) { // ORG 만날 경우 lc 초기화
@@ -260,8 +263,8 @@ public class BC_Assembler extends CPU {
         // [B][C][D]
         // 4. Second Pass(어셈블리어-기계어 번역)
         lc=0;
-        int line_num = 0;
         orgCount = 0;        // reset for re-count
+        int line_num = 0;       // 코드 오류 발견시 위치 출력을 위한 변수
 
 
         // 첫 줄이 ORG가 아닌 경우 ORG 0이 있다고 가정하고 orgCount 1 증가, 첫 org=0 대입.
@@ -318,8 +321,19 @@ public class BC_Assembler extends CPU {
                 else if(assLine[i].indirect.equals("I"))
                     assLine[i].indirect="8000";     // set first bit to 1
 
+
                 // Assembly all parts of binary instruction and store in location given by LC
-                memory[lc]=(short)(Integer.valueOf(assLine[i].command, 16) +Integer.parseInt(assLine[i].address)+ Integer.valueOf(assLine[i].indirect, 16));
+                int command=0, address=0, indirect=0;
+                try {
+                    command = Integer.valueOf(assLine[i].command, 16);
+                    address = Integer.parseInt(assLine[i].address);
+                    indirect = Integer.valueOf(assLine[i].indirect, 16);
+                }catch (Exception e){
+                    System.out.println("[ERROR] 알 수 없는 주소 기호입니다. 어셈블리어를 올바르게 입력했는지 점검하세요.");
+                    System.exit(i);
+                }
+                memory[lc]=(short)(command+address+indirect);
+
 
                 // Valid non-MRI?
             } else if (multiEquals(assLine[i].command, table_non_MRI)) {    // 4-5. non_MRI인 경우
@@ -336,8 +350,8 @@ public class BC_Assembler extends CPU {
 
             // Error in line of code
             else {// 4-6. 코드 오류인 경우
-                System.out.printf("잘못된 명령어 입력: %d번째 줄의 입력이 잘못되었습니다.\n", line_num);
-                System.exit(0); //코드를 잘못 입력한 경우 프로그램을 강제 종료
+                System.out.printf("[ERROR] 잘못된 명령어 입력: %d번째 줄의 입력이 잘못되었습니다.\n", line_num);
+                System.exit(line_num); //코드를 잘못 입력한 경우 프로그램을 강제 종료
             }
             // Increment LC
             lc++;
@@ -779,6 +793,10 @@ public class BC_Assembler extends CPU {
     // [A]
     public static void runComputer(String filename, short[]... interrupt){
 
+        // 재부팅
+        reboot();
+        System.out.println(filename+" 실행");
+
         // 메인 함수는 어셈블러 실행 - {fetch - decode - execute}로만 구성. 나머지 작업은 다른 곳에서.
         runAssembler(filename);
 
@@ -790,6 +808,7 @@ public class BC_Assembler extends CPU {
 
         // 실행되는 명령어 번째(인터럽트 제외)
         int line = 0;
+
 
 
         while (ff_S){       // start-stop flip-flop이 1일 때만 작동.
@@ -815,8 +834,9 @@ public class BC_Assembler extends CPU {
                 isInterrupt = true;
 
             } else{
-                // instruction cycle
+                System.out.println(line);
 
+                // instruction cycle
                 fetch();
                 decode();
                 // IEN, FGI, FGO 체크
@@ -859,6 +879,7 @@ public class BC_Assembler extends CPU {
         }
 
         System.out.println("--- 컴퓨터를 종료합니다. ---");
+        changedMemoryList.clear();
     }
 
 
@@ -871,23 +892,14 @@ public class BC_Assembler extends CPU {
 //            reboot();
 //        }
 
+        for(int filename : new int[]{143, 145, 154, 157, 158, 160, 162, 163, 166})
+            runComputer("src/Ass"+filename+".txt");
+
         // 테스트 인터럽트 (인터럽트를 주는 위치, 문자)
         short[][] interrupts = {{10, 'h'}, {20, 'e'}, {40, 'l'}, {50, 'l'}, {100, 'o'}, {120, ','}, {140, ' '},
                 {160, 'w'}, {200, 'o'}, {240, 'r'}, {300, 'l'}, {360, 'd'}, {390, '!'}};
 
-        runComputer("src/Assembly3.txt", interrupts);
-        System.out.println("M[0x10F]="+memory[0x10F]);
-        changedMemoryList.clear();
-//        reboot();
-//        runComputer("src/Assembly.txt");
-
-
-//        System.out.println("M[0x10F]="+memory[0x10F]);
-//        changedMemoryList.clear();
-//        reboot();
-//
-//        runComputer("src/Assembly2.txt");
-//        System.out.println("M[0x10F]="+memory[0x10F]);
+        runComputer("src/Ass167.txt", interrupts);
 
     }
 

@@ -1,0 +1,14 @@
+/ interrupt variable needed
+CIF, SKI
+BUN CIF
+INP
+OUT
+STA CHR
+HLT
+CHR,
+LDA CHR
+COF, SKO
+BUN COF
+OUT
+HLT
+END

@@ -1,11 +1,5 @@
-/ interrupt header
-/ORG 0
-ZRO, BUN ADM
-BUN SRV
-
-/ main program
-ORG 100
-ADM, LDA ADS
+ORG 100 /start
+LDA ADS
 STA PTR
 LDA NBR
 STA CTR
@@ -16,14 +10,13 @@ ISZ CTR
 BUN LOP
 STA SUM
 HLT
-ADS, HEX 500
+ADS, HEX 150
 PTR, HEX 0
 NBR, DEC -100
 CTR, HEX 0
 SUM, HEX 0
-
 / operand starts
-OPR, ORG 500
+ORG 150
 DEC 1
 DEC 2
 DEC 3
@@ -124,32 +117,4 @@ DEC 97
 DEC 98
 DEC 99
 DEC 100
-
-/ interrupt control
-ORG 800
-SRV, STA SAC
-CIR
-STA SE
-SKI
-BUN NXT
-INP
-OUT
-STA PT1 I
-ISZ PT1
-NXT, SKO
-BUN EXT
-LDA PT2 I
-OUT
-ISZ PT2
-EXT, LDA SE
-CIL
-LDA SAC
-ION
-BUN ZRO I
-SAC,
-SE,
-PT1, HEX 900    /올바르게 작동하려면 여기에 인터럽트를 위한 공간을 만들어줘야 함
-PT2, HEX A00    /올바르게 작동하려면 여기에 인터럽트를 위한 공간을 만들어줘야 함
-
-
 END

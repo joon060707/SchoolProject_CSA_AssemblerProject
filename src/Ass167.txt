@@ -5,7 +5,9 @@ BUN SRV
 
 / main program
 ORG 100
-ADM, LDA ADS
+ADM, CLA
+ION
+LDA ADS
 STA PTR
 LDA NBR
 STA CTR
