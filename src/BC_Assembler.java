@@ -834,7 +834,7 @@ public class BC_Assembler extends CPU {
                 isInterrupt = true;
 
             } else{
-                System.out.println(line);
+               // System.out.println(line);
 
                 // instruction cycle
                 fetch();
@@ -850,7 +850,6 @@ public class BC_Assembler extends CPU {
                 // 인터럽트 발생 코드
                 // 인터럽트가 아닐때만 line 증가
                 if(!isInterrupt) line++;
-//                System.out.println(line);
 
                 for(short[] interruptCase : interrupt){
                     short where = interruptCase[0];
@@ -889,7 +888,6 @@ public class BC_Assembler extends CPU {
         // jar 파일 전용
 //        for(String t:args){
 //            runComputer(t);
-//            reboot();
 //        }
 
         for(int filename : new int[]{143, 145, 154, 157, 158, 160, 162, 163, 166})
