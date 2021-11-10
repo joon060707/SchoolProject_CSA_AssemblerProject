@@ -31,29 +31,54 @@ public class BC_Assembler extends CPU {
     *
     * */
 
+    // [C]
+    // MRI 테이블
+    static String[][] table_MRI = {
+            { "AND", "0000" }, { "ADD", "1000" }, { "LDA", "2000" },
+            { "STA", "3000" }, { "BUN", "4000" }, { "BSA", "5000" }, { "ISZ", "6000" }
+    };
+    // non MRI 테이블
+    static String[][] table_non_MRI = {
+            {"CLA", "7800"}, {"CLE", "7400"}, {"CMA", "7200"},
+            {"CME", "7100"}, {"CIR", "7080"}, {"CIL", "7040"},
+            {"INC", "7020"}, {"SPA", "7010"}, {"SNA", "7008"},
+            {"SZA", "7004"}, {"SZE", "7002"}, {"HLT", "7001"},
+            {"INP", "F800"}, {"OUT", "F400"}, {"SKI", "F200"},
+            {"SKO", "F100"}, {"ION", "F080"}, {"IOF", "F040"}
+    };
+
+    // Assembly Code original
+    // 라벨 명령어 주소 I 코멘트
+    static String[] AC_original;
+
+    // Assembly Code split
+    // 라벨 | 명령어 | 주소 | I | 코멘트
+    static String[][] AC_split;
+
+    // Address-Symbol table
+    // 기호 | 주소
+    static String[][] AS_table;
+
 
     private static void runAssembler(String file) {
 
         System.out.println("--- 어셈블러 실행 시작 ---");
 
         // [A][B]
+        // 메모리의 적절한 출력 범위 지정을 위해 최초 ORG 값을 기억해야 함.
+        // 그러나 단일 ORG 변수로 저장시 최초 ORG가 손실될 수 있음.
+        // 따라서 명령어 ORG와 피연산자 ORG를 모두 저장할 orgList 정의
         int[] orgList = new int[10];
         orgList[0] = -1; // Valid ORG flag
-        int orgCount = 0;
-        // int org=0;      // ORG
+        int orgCount = 0;   // ORG 개수
+
         int lc=0;       // LC
 
-        // Assembly Code original
-        // 라벨 명령어 주소 I 코멘트
-        String[] AC_original = new String[4096];
-
-        // Assembly Code split
-        // 라벨 | 명령어 | 주소 | I | 코멘트
-        String[][] AC_split = new String[4096][5];
-
-        // Address-Symbol table
-        // 기호 | 주소
-        String[][] AS_table = new String[2048][2];
+        // 메모리 크기로 초기화
+        AC_original = new String[4096];
+        AC_split = new String[4096][5];
+        // 메모리 크기의 절반으로 초기화
+        AS_table = new String[2048][2];
 
         // AssemblyLine 클래스
         // 라벨 , 명령어 , 주소 , I , 코멘트
@@ -83,25 +108,9 @@ public class BC_Assembler extends CPU {
         AssemblyLine[] assLine = new AssemblyLine[4096];
 
 
-        // [C]
-        // MRI 테이블
-        String[][] table_MRI = {
-                { "AND", "0000" }, { "ADD", "1000" }, { "LDA", "2000" },
-                { "STA", "3000" }, { "BUN", "4000" }, { "BSA", "5000" }, { "ISZ", "6000" }
-        };
-        // non MRI 테이블
-        String[][] table_non_MRI = {
-                {"CLA", "7800"}, {"CLE", "7400"}, {"CMA", "7200"},
-                {"CME", "7100"}, {"CIR", "7080"}, {"CIL", "7040"},
-                {"INC", "7020"}, {"SPA", "7010"}, {"SNA", "7008"},
-                {"SZA", "7004"}, {"SZE", "7002"}, {"HLT", "7001"},
-                {"INP", "F800"}, {"OUT", "F400"}, {"SKI", "F200"},
-                {"SKO", "F100"}, {"ION", "F080"}, {"IOF", "F040"}
-        };
-
-
         // [A][B]
-        // 1. 버퍼리더에 파일 등록, 파일을 temp1에 저장
+        // 1. 어셈블리어 파일을 읽어 원본 줄에 저장
+        // 빈 줄이거나 주석 줄은 제외
         int cnt=0;
         try {
             BufferedReader br = new BufferedReader(new FileReader(file));
@@ -116,20 +125,24 @@ public class BC_Assembler extends CPU {
         } catch (Exception e) {}
 
 
+        // 2. 줄을 분석하여 다섯 파트로 저장
 
         // [B] [D]
-        // 2-1. temp1에서 라벨 필드 구분하여 temp2로 이전
+        // 2-1) Address Symbol 분리
         for(int i=0;i<AC_original.length;i++) {
             if(AC_original[i] != null) {
-                String[] commentText = AC_original[i].split("/"); //주석에 ,(콤마)가 들어가는 경우는 따로 분리
-                String nonComment = commentText[0].trim();
+                String[] commentText = AC_original[i].split("/"); // 주석에 ,(콤마)가 들어가는 경우는 따로 분리
+                String nonComment = commentText[0].trim();              // 불필요한 여백 제거
                 String[] symbolSplit =  nonComment.split(",");
+
+                // length==2라는 뜻은 Address Symbol 뒤에 내용이 있다는 뜻.
                 if(symbolSplit.length==2) {
-                    symbolSplit[1] = symbolSplit[1].trim(); //temp[1]의 가장 앞부분에 공백이 있으면 제거
+                    symbolSplit[1] = symbolSplit[1].trim();             // 불필요한 여백 제거
                     AC_split[i][0] = symbolSplit[0];
                     AC_original[i] = symbolSplit[1];
                 } else {
-                    if(nonComment.charAt(nonComment.length() - 1) == ',') {//라벨만 입력된 경우
+                    // Address Symbol만 존재하므로 없다는 의미의 - 대입
+                    if(nonComment.charAt(nonComment.length() - 1) == ',') {
                         AC_split[i][0] = symbolSplit[0];
                         AC_original[i] = "-";
                         continue;
@@ -141,7 +154,7 @@ public class BC_Assembler extends CPU {
         }
 
         // [B]
-        // 2-2. temp1에서 코멘트 필드 구분하여 temp2로 이전
+        // 2-2) Comment(주석) 분리
         for(int i=0;i<AC_original.length;i++) {
             if(AC_original[i] != null) {
                 String[] commentSplit = AC_original[i].split("/");
@@ -154,7 +167,7 @@ public class BC_Assembler extends CPU {
         }
 
         // [B]
-        // 2-3. temp1에서 명령어 필드 구분하여 temp2로 이전
+        // 2-3) 명령어 부분의 1~3개 토큰을 공백으로 분리
         for(int i=0;i<AC_original.length;i++) {
             if(AC_original[i] != null) {
                 String[] instSplit = AC_original[i].split(" ");
@@ -177,19 +190,20 @@ public class BC_Assembler extends CPU {
 
 
         // [B]
-        // 2-4. temp2 -> assLine 전환
+        // 2-4) 가독성을 위해 완성된 split 배열을 AssemblyLine으로 전환
         for(int i=0;i<assLine.length;i++) {
             assLine[i] = new AssemblyLine(AC_split[i]);
         }
 
         // [A] [B]
-        // 예) assLine 출력
+        // 어셈블리어 분석 결과 출력
         System.out.println("<  어셈블리어 분석 결과  >");
         assLine[0].printLabel();
         for(int i=0;i<cnt;i++) assLine[i].print();
          System.out.println();
 
 
+        // [A]
          // 첫 줄이 ORG가 아닌 경우 ORG 0이 있다고 가정하고 orgCount 1 증가, 첫 org=0 대입.
          if(!assLine[0].command.equals("ORG")){
              orgList[0] = 0;
@@ -200,7 +214,7 @@ public class BC_Assembler extends CPU {
 
         // [F]
         //3. First Pass(주소-기호 테이블 등록)
-        int AS_table_size=0; // 기호 주소 카운트
+        int AS_table_size=0; // 유효한 기호 주소 크기
 
         // Scan next line of code
         for(int i=0;i<assLine.length;i++) {
@@ -216,22 +230,22 @@ public class BC_Assembler extends CPU {
                         a++;
                     }
                 }
-                if (a == 0) {
+                if (a == 0) {        // 아직 기록되지 않은 기호이므로 Address Symbol table에 추가
                     AS_table[AS_table_size][0]=assLine[i].label;
                     AS_table[AS_table_size][1]=Integer.toString(lc);
                     AS_table_size++;
-                }
-                else {
-                    System.out.println("[ERROR] 이중 정의되는 기호가 있어 어셈블러와 컴퓨터를 강제종료합니다."); //이미 기호표에 존재 - 이중 정의된 기호임 오류표시, 시스템 종료
-                    System.exit(a);
+                } else {            // 이미 기록된 기호이므로 코드 오류로 판단하고 강제 종료
+                    System.out.println("[ERROR] 이중 정의되는 기호가 있어 어셈블러와 컴퓨터를 강제종료합니다.");
+                    System.exit(i+1);                 // 이중 정의된 기호의 위치를 종료 코드로 지정
                 }
             }
-            else if (assLine[i].command==null){
+            else if (assLine[i].command==null){         // END가 없으면 무한 루프에 빠지므로 강제종료
                 System.out.println("[ERROR] END가 정의되지 않아 어셈블러와 컴퓨터를 강제종료합니다.");
-                System.exit(i);
+                System.exit(i+1);                      // END가 있어야 할 위치를 종료 코드로 지정
             }
             // ORG?
             else if (assLine[i].command.equals("ORG")) { // ORG 만날 경우 lc 초기화
+                // 메모리 출력 범위 지정을 위해 모든 ORG 값 저장
                 orgList[orgCount] = Integer.valueOf(assLine[i].address,16);
                 // Set LC
                 lc = orgList[orgCount++];
@@ -246,7 +260,7 @@ public class BC_Assembler extends CPU {
         }
 
         // [B]
-        // 예) 주소-기호 테이블 출력
+        // Address Symbol Table 출력
         System.out.println("<  주소-기호 테이블 상태  >");
         System.out.printf("|%5s\t|%5s\t|\n", "Sym", "Addr");
         for(int i=0;i<AS_table_size;i++) {
@@ -264,7 +278,6 @@ public class BC_Assembler extends CPU {
         // 4. Second Pass(어셈블리어-기계어 번역)
         lc=0;
         orgCount = 0;        // reset for re-count
-        int line_num = 0;       // 코드 오류 발견시 위치 출력을 위한 변수
 
 
         // 첫 줄이 ORG가 아닌 경우 ORG 0이 있다고 가정하고 orgCount 1 증가, 첫 org=0 대입.
@@ -274,7 +287,6 @@ public class BC_Assembler extends CPU {
         }
 
         for(int i=0;i<assLine.length;i++) {
-            line_num++;
 
             // Pseudo-instruction?
             if(multiEquals(assLine[i].command, new String[][]{{"ORG"},{"END"},{"DEC"},{"HEX"},{"-"}})){//"-"는 라벨만 입력된 줄
@@ -295,6 +307,7 @@ public class BC_Assembler extends CPU {
                         assLine[i].address = Integer.toString(Integer.valueOf(assLine[i].address, 16));
                     memory[lc]=(short)Integer.parseInt(assLine[i].address);
                 }
+                // else 생략. 줄표의 경우 해석하지 않고 무시하므로 초기값 0000이 저장됨.
             }
             // then this is normal instruction
             else if (multiEquals(assLine[i].command, table_MRI)) { // 4-4. MRI인 경우
@@ -325,12 +338,13 @@ public class BC_Assembler extends CPU {
                 // Assembly all parts of binary instruction and store in location given by LC
                 int command=0, address=0, indirect=0;
                 try {
+                    // 정의되지 않은 Address Symbol을 코드에 입력한 경우 숫자로 변환할 수 없어 예외 발생 -> 어셈블러 강제종료
                     command = Integer.valueOf(assLine[i].command, 16);
                     address = Integer.parseInt(assLine[i].address);
                     indirect = Integer.valueOf(assLine[i].indirect, 16);
                 }catch (Exception e){
                     System.out.println("[ERROR] 알 수 없는 주소 기호입니다. 어셈블리어를 올바르게 입력했는지 점검하세요.");
-                    System.exit(i);
+                    System.exit(i+1); // 문제가 되는 위치를 출력하며 종료
                 }
                 memory[lc]=(short)(command+address+indirect);
 
@@ -349,9 +363,9 @@ public class BC_Assembler extends CPU {
             } else if(assLine[i].command.equals("null")) lc--; //빈 줄과 주석으로만 되어 있는 줄은 코드 오류 처리를 안하고, lc에도 영향을 안줌.
 
             // Error in line of code
-            else {// 4-6. 코드 오류인 경우
-                System.out.printf("[ERROR] 잘못된 명령어 입력: %d번째 줄의 입력이 잘못되었습니다.\n", line_num);
-                System.exit(line_num); //코드를 잘못 입력한 경우 프로그램을 강제 종료
+            else {      //코드를 잘못 입력한 경우 프로그램을 강제 종료
+                System.out.printf("[ERROR] 잘못된 명령어 입력: %d번째 줄의 입력이 잘못되었습니다.\n", i+1);
+                System.exit(i+1);
             }
             // Increment LC
             lc++;
@@ -367,11 +381,14 @@ public class BC_Assembler extends CPU {
         // 5. memory 상태 출력
         System.out.println("---저장된 기계어입니다---");
 
+        // ORG를 배열로 하지 않으면 가장 마지막 ORG 위치부터 출력될 뿐 아니라 프로그램 시작점을 기억할 수 없음.
         for(int i=orgList[0]; i<lc; i++){
             if( contains(i, AS_table) || memory[i]!=0)    // 메모리 값이 0이 아니거나 주소 기호 테이블에 포함된 경우에만 출력
                 System.out.printf("M[%03X] = %04X\n", i, memory[i]);
         }
         System.out.println("---기계어의 끝입니다---");
+
+        //PC에 프로그램 시작점 저장
         reg_PC = (short) orgList[0];
     }
 
@@ -396,6 +413,17 @@ public class BC_Assembler extends CPU {
             equals |= Integer.parseInt(addr[1]) == key;
         }
         return equals;
+    }
+
+    // 해당 주소가 주소-기호 테이블에 들어 있는지 판단하여 해당하는 기호 주소를 반환하는 함수
+    public static String translateTable(int key, String[][] table){
+
+        for (String[] addr : table) {
+            if (addr[1] == null) continue;
+            if (Integer.parseInt(addr[1]) == key)
+                return addr[0];
+        }
+        return "UNKNOWN";
     }
 
     //////////////////////////////////////////////////////////////////////////////////////
@@ -485,7 +513,8 @@ public class BC_Assembler extends CPU {
             }
         }
 
-        System.out.printf("해석 결과: %s %s %s\n", decodedInstruction, (reg_IR & 0x00007000) >> 12 == 7 ? "" : String.format("%03X", reg_IR & 0x00000fff), ff_I?"I":"");
+        System.out.printf("해석 결과: %s %s %s\n", decodedInstruction,
+                (reg_IR & 0x00007000) >> 12 == 7 ? "" : translateTable(reg_IR & 0x00000fff, AS_table), ff_I?"I":"");
 
     }
 
@@ -765,7 +794,7 @@ public class BC_Assembler extends CPU {
             case "SKO": SKO(); break;
             case "ION": ION(); break;
             case "IOF": IOF(); break;
-            default: break;
+            default: System.out.println("실행할 수 없는 명령어입니다."); break;
         }
 
         // [A] [G]
@@ -868,7 +897,8 @@ public class BC_Assembler extends CPU {
         // [G]
         System.out.println("--- 변경된 메모리 ---");
         for(short[] i : changedMemoryList) {
-            System.out.println(String.format("memory[%03X]: %04X -> %04X", i[0], i[1], i[2]));
+            System.out.println(String.format("memory[%03X]: %04X -> %04X%s",
+                    i[0], i[1], i[2], translateTable(i[0], AS_table).equals("UNKNOWN")?"":"\t["+translateTable(i[0], AS_table)+"]"));
         }
 
         // 인터럽트로 들어온 문자열 최종 출력
