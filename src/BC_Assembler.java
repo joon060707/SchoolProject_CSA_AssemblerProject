@@ -5,9 +5,6 @@ import java.util.List;
 
 public class BC_Assembler extends CPU {
 
-
-    // 팀별로 함수 사용
-
     /*
     * Contributor
     * [A] 정재준
@@ -21,15 +18,6 @@ public class BC_Assembler extends CPU {
     * */
 
 
-    /*
-    * 코드 입력(어셈블러) 팀
-    *
-    * + 주소 기호 테이블
-    * + 코드에 주석 추가
-    * + 어셈블리 코드 주석 제거
-    * + 첫 줄 이외의 ORG 처리
-    *
-    * */
 
     // [C]
     // MRI 테이블
@@ -60,6 +48,7 @@ public class BC_Assembler extends CPU {
     static String[][] AS_table;
 
 
+    // 어셈블러 함수
     private static void runAssembler(String file) {
 
         System.out.println("--- 어셈블러 실행 시작 ---");
@@ -85,7 +74,7 @@ public class BC_Assembler extends CPU {
         class AssemblyLine {
             final String label; String command; String address; String indirect; final String comment;
             AssemblyLine(String[] line) {
-                label=line[0];
+                label=line[0]==null?"":line[0];
                 command=line[1];
                 address=line[2];
                 indirect=line[3];
@@ -122,10 +111,13 @@ public class BC_Assembler extends CPU {
                 AC_original[cnt++] = line;
             }
             br.close();
-        } catch (Exception e) {}
+        } catch (Exception e) {
+            System.out.println("[ERROR] 파일이 존재하지 않습니다.");
+            System.exit(-1);
+        }
 
 
-        // 2. 줄을 분석하여 다섯 파트로 저장
+        // 2. 줄을 분석하여 다섯 파트로 나누어 저장
 
         // [B] [D]
         // 2-1) Address Symbol 분리
@@ -161,8 +153,11 @@ public class BC_Assembler extends CPU {
                 if(commentSplit.length==2) {
                     AC_split[i][4] = commentSplit[1];
                     AC_original[i] = commentSplit[0];
-                } else
+                } else{
+                    AC_split[i][4] = "";
                     AC_original[i] = commentSplit[0];
+                }
+
             }
         }
 
@@ -174,16 +169,11 @@ public class BC_Assembler extends CPU {
                 for(int j = 0; j<instSplit.length; j++) {
                     AC_split[i][j+1]=instSplit[j];
                 }
-            }
-        }
-
-        // [D]
-        //명령어 비교할 때 null이 있으면 오류가 발생하므로 문자열 "null"을 넣음
-        for(int i = 0; i < AC_original.length; i++) {
-
-            if(AC_original[i] != null) {
-                if (AC_original[i].equals("")) AC_split[i][1] = "null"; //빈 줄 혹은 주석만 있는 경우
-                if(AC_original[i].trim().equals("")) AC_split[i][1] = "null"; //빈 줄은 아니지만 공백만 있는 경우
+                for(int j = 0; j<3; j++) {
+                    if(AC_split[i][j+1]==null){
+                        AC_split[i][j+1]="";
+                    }
+                }
             }
         }
 
@@ -211,7 +201,6 @@ public class BC_Assembler extends CPU {
          }
 
 
-
         // [F]
         //3. First Pass(주소-기호 테이블 등록)
         int AS_table_size=0; // 유효한 기호 주소 크기
@@ -220,7 +209,7 @@ public class BC_Assembler extends CPU {
         for(int i=0;i<assLine.length;i++) {
 
             // Label?
-            if (assLine[i].label != null) {
+            if (!assLine[i].label.equals("")) {
 
                 // Store symbol in address-symbol table together with value of LC
                 int a = 0; // 기호표 중복 개수
@@ -258,6 +247,9 @@ public class BC_Assembler extends CPU {
             // Increment LC
             lc++;
         }
+        // First Pass Done.
+
+
 
         // [B]
         // Address Symbol Table 출력
@@ -267,7 +259,6 @@ public class BC_Assembler extends CPU {
             System.out.print("|");
             System.out.printf("%5s\t|%4X\t|\n", AS_table[i][0], Integer.parseInt(AS_table[i][1]));
         } System.out.println();
-
 
 
 
@@ -329,7 +320,7 @@ public class BC_Assembler extends CPU {
                 }
 
                 // I?
-                if(assLine[i].indirect==null)
+                if(assLine[i].indirect.equals(""))
                     assLine[i].indirect="0";    // set first bit to 0
                 else if(assLine[i].indirect.equals("I"))
                     assLine[i].indirect="8000";     // set first bit to 1
@@ -360,17 +351,17 @@ public class BC_Assembler extends CPU {
                 }
                 // Store binary equivalent of instruction in location given by LC
                 memory[lc]=(short)(int)Integer.valueOf(assLine[i].command, 16);
-            } else if(assLine[i].command.equals("null")) lc--; //빈 줄과 주석으로만 되어 있는 줄은 코드 오류 처리를 안하고, lc에도 영향을 안줌.
+            }
 
             // Error in line of code
             else {      //코드를 잘못 입력한 경우 프로그램을 강제 종료
-                System.out.printf("[ERROR] 잘못된 명령어 입력: %d번째 줄의 입력이 잘못되었습니다.\n", i+1);
+                System.out.println("[ERROR] 잘못된 명령어가 있습니다. 어셈블리 코드 파일을 확인해 주세요.");
                 System.exit(i+1);
             }
             // Increment LC
             lc++;
         }
-
+        //Second Pass Done.
 
 
 
@@ -394,6 +385,7 @@ public class BC_Assembler extends CPU {
 
 
     //////////////////////////////////////////////////////////////////////////////////////
+    // 보조 함수
 
     // [A]
     // 해당 명령어가 각 테이블에 해당하는지 판단하여 반환하는 함수
@@ -430,14 +422,7 @@ public class BC_Assembler extends CPU {
 
 
 
-    /*
-     * Fetch & Decode 팀
-     *
-     * 실행 과정에서 오류 판단
-     *
-     *
-     * */
-
+    // Fetch & Decode
 
     // [A]
     static void fetch(){
@@ -522,19 +507,17 @@ public class BC_Assembler extends CPU {
     //////////////////////////////////////////////////////////////////////////////////////
 
 
+    // Instruction Set
 
-    /*
-     * Instruction Set 팀
-     *
-     * + 실행 과정에서 문제 없는지 판단
-     *
-     *
-     * */
+    // 아래 변수들은 출력을 보조하는 변수들이므로 어셈블러나 Basic Computer에는 영향을 주지 않음.
+    //인터럽트 출력 문자열(Ass167.txt에만 해당)
+    static StringBuilder string_OUT = new StringBuilder();
 
-    // 이 변수들은 출력을 보조하는 변수들이므로 어셈블러나 Basic Computer에는 영향을 주지 않음.
-    static List<short[]> changedMemoryList = new ArrayList<>(); //STA 사용시 변화된 메모리 주소 저장하는 리스트
+    // STA, ISZ, BSA 등 메모리를 변경하는 명령어에 한해 출력하기 위해 만든 배열
+    static List<short[]> changedMemoryList = new ArrayList<>();
+    static short[] changedMemory = new short[3];
+    static boolean changedMemoryFlag = false;
 
-    static StringBuilder string_OUT = new StringBuilder(); //인터럽트 출력 문자열
 
 
     //메모리 참조 명령
@@ -570,15 +553,18 @@ public class BC_Assembler extends CPU {
         reg_AC = reg_DR;
     }
 
+
+
     // [A][G]
     static void STA(){
 
         //메모리 변화 출력
-        short[] changeMemory = new short[3];
-        changeMemory[0] = reg_AR; // 변화할 메모리 주소
-        changeMemory[1] = memory[reg_AR]; //변화할 메모리 이전 값
-        changeMemory[2] = reg_AC; //변화할 메모리 이후 값
-        changedMemoryList.add(changeMemory); //변화된 메모리 주소 저장
+        changedMemory = new short[3];
+        changedMemory[0] = reg_AR; // 변화할 메모리 주소
+        changedMemory[1] = memory[reg_AR]; //변화할 메모리 이전 값
+        changedMemory[2] = reg_AC; //변화할 메모리 이후 값
+        changedMemoryList.add(changedMemory); //변화된 메모리 주소 저장
+        changedMemoryFlag = true;
 
         // T4
         memory[reg_AR] = reg_AC;
@@ -592,6 +578,15 @@ public class BC_Assembler extends CPU {
 
     // [G]
     static void BSA() {
+
+        //메모리 변화 출력
+        changedMemory = new short[3];
+        changedMemory[0] = reg_AR; // 변화할 메모리 주소
+        changedMemory[1] = memory[reg_AR]; //변화할 메모리 이전 값
+        changedMemory[2] = reg_PC; //변화할 메모리 이후 값
+        changedMemoryFlag = true;
+
+
         // T4
         memory[reg_AR++] = reg_PC;
         reg_SC++;
@@ -601,6 +596,15 @@ public class BC_Assembler extends CPU {
 
     // [G]
     static void ISZ() {
+
+        //메모리 변화 출력
+        changedMemory = new short[3];
+        changedMemory[0] = reg_AR; // 변화할 메모리 주소
+        changedMemory[1] = memory[reg_AR]; //변화할 메모리 이전 값
+        changedMemory[2] = (short)(memory[reg_AR]+1); //변화할 메모리 이후 값
+        changedMemoryFlag = true;
+
+
         //T4
         reg_DR = memory[reg_AR];
         reg_SC++;
@@ -701,9 +705,13 @@ public class BC_Assembler extends CPU {
     }
 
     // [A]
+    // HLT가 호출되면 start-stop Flip-Flop이 0이 되면서 컴퓨터 자동 종료.
     static void HLT(){
         ff_S = false;
     }
+
+
+
 
     // 입출력 명령
 
@@ -718,7 +726,7 @@ public class BC_Assembler extends CPU {
         reg_OUTR = (byte) reg_AC;
         ff_FGO = false;
 
-        // 출력용
+        // 인터럽트 출력
         System.out.println("OUT 출력값: "+(char) reg_OUTR);
         string_OUT.append((char) reg_OUTR);
     }
@@ -752,12 +760,7 @@ public class BC_Assembler extends CPU {
 
 
 
-    /*
-     * Execution 팀
-     *
-     * + 실행시 참조된 메모리들도 출력되도록 수정
-     *
-     * */
+    // Execute
     static void execute(){
 
         if(reg_IR == 0xFFFFC000){
@@ -800,15 +803,22 @@ public class BC_Assembler extends CPU {
         // [A] [G]
         // 모든 명령이 끝나면 공통으로 SC=0이 됨.
         reg_SC = 0;
-        System.out.print("IR\t\tAR\tPC\tDR\t\tAC\t\tTR\t\t");
+        System.out.print("IR\tAR\tPC\tDR\tAC\tTR\t");
         System.out.print("I\tS\tE");
-        for(short[] m : changedMemoryList)
-            System.out.printf("\tM[%03X]", m[0]);
+
+        if(changedMemoryFlag){
+            System.out.printf("\tM[%03X]", changedMemory[0]);
+        }
+
         System.out.println();
         System.out.print(String.format("%04X\t%03X\t%03X\t%04X\t%04X\t%04X\t", reg_IR, reg_AR, reg_PC, reg_DR, reg_AC, reg_TR));
         System.out.print(String.format("%X\t%X\t%X", ff_I?1:0, ff_S?1:0, ff_E?1:0));
-        for(short[] m : changedMemoryList)
-            System.out.printf("\t%04X", m[2]);
+
+        if(changedMemoryFlag){
+            System.out.printf("\t%04X -> %04X", changedMemory[1], changedMemory[2]);
+            changedMemoryFlag =false;
+        }
+
         System.out.println();
     }
 
@@ -816,6 +826,7 @@ public class BC_Assembler extends CPU {
 
     //////////////////////////////////////////////////////////////////////////////////////
 
+    // 인터럽트가 아닐 때만 line 카운트되기 위한 것으로 Basic Computer 실행과는 관련 없음
     static boolean isInterrupt = false;
 
 
@@ -824,27 +835,31 @@ public class BC_Assembler extends CPU {
 
         // 재부팅
         reboot();
-        System.out.println(filename+" 실행");
 
-        // 메인 함수는 어셈블러 실행 - {fetch - decode - execute}로만 구성. 나머지 작업은 다른 곳에서.
+        // 어셈블러 실행하여 메모리에 기계어 저장
+        System.out.println(filename+" 실행");
         runAssembler(filename);
 
+
+       // 초기 상태 출력
         System.out.println("--- 명령어 실행 시작 ---");
-        System.out.print("IR\t\tAR\tPC\tDR\t\tAC\t\tTR\t\t");
+        System.out.print("IR\tAR\tPC\tDR\tAC\tTR\t");
         System.out.println("I\tS\tE");
         System.out.print(String.format("%04X\t%03X\t%03X\t%04X\t%04X\t%04X\t", reg_IR, reg_AR, reg_PC, reg_DR, reg_AC, reg_TR));
         System.out.println(String.format("%X\t%X\t%X", ff_I?1:0, ff_S?1:0, ff_E?1:0));
 
-        // 실행되는 명령어 번째(인터럽트 제외)
+
+        // 인터럽트를 적절한 곳에 주기 위한 변수로 Basic Computer 실행과는 무관. 실행되는 명령어 번째 기록
         int line = 0;
 
 
-
-        while (ff_S){       // start-stop flip-flop이 1일 때만 작동.
+        // 명령어 실행 시작
+        // start-stop flip-flop이 1일 때만 작동. 0이 되면 반복문을 빠져나오면서 컴퓨터 종료 단계로 이동
+        while (ff_S){
 
             // R?
-            if(ff_R){
-                // interrupt cycle
+            if(ff_R){           // R = 1: interrupt cycle
+
                 //T0
                 reg_AR=0;
                 reg_TR=reg_PC;
@@ -862,24 +877,21 @@ public class BC_Assembler extends CPU {
                 // 이 경우 인터럽트 시작
                 isInterrupt = true;
 
-            } else{
-               // System.out.println(line);
+            } else{             // R = 0: instruction cycle
 
-                // instruction cycle
                 fetch();
-                decode();
-                // IEN, FGI, FGO 체크
+                // IEN, FGI, FGO 체크 (decode()와 동시)
                 if(ff_IEN){
                     ff_R = ff_FGI || ff_FGO;
                 }
+                decode();
                 execute();
 
 
 
-                // 인터럽트 발생 코드
+                // 인터럽트 발생 코드(Ass167.txt만 해당)
                 // 인터럽트가 아닐때만 line 증가
                 if(!isInterrupt) line++;
-
                 for(short[] interruptCase : interrupt){
                     short where = interruptCase[0];
                     char ch = (char) interruptCase[1];
@@ -890,11 +902,16 @@ public class BC_Assembler extends CPU {
                             break;
                     }
                 }
+
+
             }
         }
+
+        // 모든 명령어 실행 끝.(정확히는 HLT 실행됨)
         System.out.println("--- 명령어 실행 끝 ---");
 
         // [G]
+        // 지금까지 변경된 메모리 출력 (STA에 의한 모든 변화 출력)
         System.out.println("--- 변경된 메모리 ---");
         for(short[] i : changedMemoryList) {
             System.out.println(String.format("memory[%03X]: %04X -> %04X%s",
@@ -906,8 +923,9 @@ public class BC_Assembler extends CPU {
             System.out.println("입력받은 문자열: "+string_OUT);
             string_OUT.delete(0, string_OUT.length());
         }
-
         System.out.println("--- 컴퓨터를 종료합니다. ---");
+
+        // 연속 실행을 위해 기존 데이터 삭제
         changedMemoryList.clear();
     }
 
@@ -915,19 +933,32 @@ public class BC_Assembler extends CPU {
     // [A]
     public static void main(String[] args) {
 
-        // jar 파일 전용
-//        for(String t:args){
-//            runComputer(t);
-//        }
+        // 원하는 실행 방식에 따라 주석을 해제하시면 됩니다.
 
+
+        // 1) jar 파일 생성시 전용
+        // BC_Assembler A.txt B.txt ...처럼 실행
+//        for(String t:args) runComputer(t);
+
+
+        // 2) 원하는 어셈블러 파일 1개만 실행
+        runComputer("src/Ass162.txt");
+
+
+        // 3) 전체 어셈블러 파일 실행
+        /*
         for(int filename : new int[]{143, 145, 154, 157, 158, 160, 162, 163, 166})
             runComputer("src/Ass"+filename+".txt");
+        */
 
-        // 테스트 인터럽트 (인터럽트를 주는 위치, 문자)
-        short[][] interrupts = {{10, 'h'}, {20, 'e'}, {40, 'l'}, {50, 'l'}, {100, 'o'}, {120, ','}, {140, ' '},
-                {160, 'w'}, {200, 'o'}, {240, 'r'}, {300, 'l'}, {360, 'd'}, {390, '!'}};
 
-        runComputer("src/Ass167.txt", interrupts);
+        // 4) Ass167.txt 실행
+        /*
+                // 테스트 인터럽트 (인터럽트를 주는 위치, 문자)
+                short[][] interrupts = {{10, 'h'}, {20, 'e'}, {40, 'l'}, {50, 'l'}, {100, 'o'}, {120, ','}, {140, ' '},
+                        {160, 'w'}, {200, 'o'}, {240, 'r'}, {300, 'l'}, {360, 'd'}, {390, '!'}};
+                runComputer("src/Ass167.txt", interrupts);
+        */
 
     }
 
